@@ -5,6 +5,7 @@ go 1.26.3
 require (
 	github.com/beego/beego/v2 v2.3.10
 	github.com/gin-gonic/gin v1.12.0
+	github.com/gorilla/mux v1.8.1
 	github.com/smartystreets/goconvey v1.8.1
 )
 
@@ -27,6 +28,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
