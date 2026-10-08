@@ -1,34 +1,34 @@
 package controllers
 
-import(
+import (
+	"net/http"
 	"GESTOCK_MID/models"
 	"github.com/gin-gonic/gin"
-	"GESTOCK_MID/db"
-	
 )
 
+// Obtener todas las incidencias
 func GetIncidencias(c *gin.Context) {
-	var incidencias []models.Incidencia
-	err := db.GetAllIncidencias(&incidencias)
+	incidencias, err := models.GetAllIncidencias()
 	if err != nil {
-		c.JSON(500, gin.H{"error": "Error al obtener las incidencias"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener las incidencias"})
 		return
 	}
-	c.JSON(200, incidencias)
+	c.JSON(http.StatusOK, incidencias)
 }
 
+// Crear una incidencia
 func CreateIncidencia(c *gin.Context) {
 	var incidencia models.Incidencia
-	err := c.BindJSON(&incidencia)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "Error al parsear la incidencia"})
+	
+	if err := c.ShouldBindJSON(&incidencia); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error al parsear la incidencia"})
 		return
 	}
 
-	err = db.CreateIncidencia(&incidencia)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "Error al crear la incidencia"})
+	if err := incidencia.Create(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al crear la incidencia"})
 		return
 	}
-	c.JSON(201, incidencia)
+	
+	c.JSON(http.StatusCreated, incidencia)
 }
