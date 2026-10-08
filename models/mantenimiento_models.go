@@ -1,9 +1,9 @@
 package models
 
 type Mantenimiento struct {
-	Id_mantenimiento int `json:"id_mantenimiento"`
-	Id_equipo int `json:"id_equipo"`
-	tipo string `json:"tipo"`
-	detalles string `json:"detalles"`
-	fecha_programada string `json:"fecha_programada"`
+	IdMantenimiento int `json:"id_mantenimiento"`
+	IdEquipo int `json:"id_equipo"`
+	Tipo string `json:"tipo"`
+	Detalles string `json:"detalles"`
+	Fecha_programada string `json:"fecha_programada"`
 }

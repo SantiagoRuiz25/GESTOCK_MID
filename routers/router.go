@@ -1,5 +1,4 @@
 package routers
-
 import (
 	"GESTOCK_MID/controllers"
 
@@ -7,7 +6,9 @@ import (
 )
 
 func init() {
+	// Rutas de bodegas e incidencias
 	web.Router("/incidencias", &controllers.IncidenciaController{})
 	web.Router("/bodegas/:id", &controllers.BodegasController{}, "get:GetById")
 	web.Router("/bodegas", &controllers.BodegasController{}, "post:Post")
+	web.Router("/auditorias", &controllers.AuditoriaController{})
 }
