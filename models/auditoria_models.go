@@ -1,4 +1,4 @@
-package models
+ package models
 
 import (
 	"GESTOCK_MID/db"
@@ -52,3 +52,4 @@ func (a *Auditoria) Delete(id int) error {
 	_, err := db.DB.Exec("DELETE FROM auditoria WHERE id_auditoria = ?", id)
 	return err
 }
+
