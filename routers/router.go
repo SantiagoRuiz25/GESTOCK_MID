@@ -11,4 +11,5 @@ func init() {
 	web.Router("/bodegas/:id", &controllers.BodegasController{}, "get:GetById")
 	web.Router("/bodegas", &controllers.BodegasController{}, "post:Post")
 	web.Router("/auditorias", &controllers.AuditoriaController{})
+	
 }
