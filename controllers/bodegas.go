@@ -1,9 +1,12 @@
 package controllers
 
 import (
+	"GESTOCK_MID/models"
+	"encoding/json"
+	"strconv"
+
 	"github.com/beego/beego/v2/server/web"
 	_ "github.com/beego/beego/v2/server/web"
-	"strconv"
 )
 
 type BodegasController struct {
@@ -34,8 +37,10 @@ func (c *BodegasController) GetById() {
 		return
 
 	}
+}
 
-	func (c *BodegasController) Post() {
+
+	func (c *BodegasController) Post(){
 	var nuevaBodega models.Bodegas
 
 	err := json.Unmarshal(c.Ctx.Input.RequestBody, &nuevaBodega)
@@ -49,7 +54,7 @@ func (c *BodegasController) GetById() {
 		return
 	}
 
-	if nuevaBodega.Nombre == "" || nuevaBodega.Codigo == "" {
+	if nuevaBodega.Nombre == "" || nuevaBodega.Codigo  <=0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
 			"Status":  400,
@@ -67,7 +72,8 @@ func (c *BodegasController) GetById() {
 	}
 	c.ServeJSON()
 }
-}
+
+
 
 
 
