@@ -2,10 +2,10 @@ package models
 
 type Producto struct {
 	ID          int     `json:"id"`
+	Id_categoria 	int 	`json:"id_categoria"`
+	Id_bodega int `json:"id_bodega"`
 	Codigo      string  `json:"codigo"`
 	Nombre      string  `json:"nombre"`
-	CategoriaId int     `json:"categoria_id"`
-	BodegaId    int     `json:"bodega_id"`
 	Precio      float64 `json:"precio"`
 	Stock       int     `json:"stock"`
 }
