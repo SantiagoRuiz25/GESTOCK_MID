@@ -5,40 +5,33 @@ import (
 )
 
 type Mantenimiento struct {
-	ID              int    `json:"id"`
-	EquipoID        int    `json:"equipo_id"`
-	Tipo            string `json:"tipo"`
-	Detalles        string `json:"detalles"`
-	FechaProgramada string `json:"fecha_programada"`
+	ID              int    `orm:"column(id);pk;auto" json:"id"`
+	EquipoID        int    `orm:"column(equipo_id)" json:"equipo_id"`
+	Tipo            string `orm:"column(tipo)" json:"tipo"`
+	Detalles        string `orm:"column(detalles)" json:"detalles"`
+	FechaProgramada string `orm:"column(fecha_programada)" json:"fecha_programada"`
 }
 
-// Consultar todos los mantenimientos
+func (t *Mantenimiento) TableName() string {
+	return "mantenimiento"
+}
 
 func GetAllMantenimientos() ([]Mantenimiento, error) {
 	o := orm.NewOrm()
 	var mantenimientos []Mantenimiento
 	_, err := o.QueryTable(new(Mantenimiento)).All(&mantenimientos)
-	return mantenimientos, err
+	if err != nil {
+		return nil, err
+	}
+	return mantenimientos, nil
 }
 
-// Crear un nuevo mantenimiento
 func (m *Mantenimiento) Create() error {
 	o := orm.NewOrm()
-	_, err := o.Insert(m)
-	return err
+	id, err := o.Insert(m)
+	if err != nil {
+		return err
+	}
+	m.ID = int(id)
+	return nil
 }
-
-// Actualizar un mantenimiento existente
-func UpdateMantenimiento(m *Mantenimiento) error {
-	o := orm.NewOrm()
-	_, err := o.Update(m)
-	return err
-}
-
-// Eliminar un mantenimiento por ID
-func DeleteMantenimiento(id int) error {
-	o := orm.NewOrm()
-	_, err := o.Delete(&Mantenimiento{ID: id})
-	return err
-}
-

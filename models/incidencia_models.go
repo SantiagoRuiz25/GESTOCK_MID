@@ -5,28 +5,33 @@ import (
 )
 
 type Incidencia struct {
-	IdIncidencia int `json:"id_incidencia"`
-	Descripcion string `json:"descripcion"`
-	Estado string `json:"estado"`
-	Fecha_creacion string `json:"fecha_creacion"`
-	IdUsuario int `json:"id_usuario"`
+	IdIncidencia   int    `orm:"column(id_incidencia);pk;auto" json:"id_incidencia"`
+	Descripcion    string `orm:"column(descripcion)" json:"descripcion"`
+	Estado         string `orm:"column(estado)" json:"estado"`
+	FechaCreacion  string `orm:"column(fecha_creacion)" json:"fecha_creacion"`
+	IdUsuario      int    `orm:"column(id_usuario)" json:"id_usuario"`
 }
 
-// Consultar
+func (t *Incidencia) TableName() string {
+	return "incidencia"
+}
 
 func GetAllIncidencias() ([]Incidencia, error) {
 	o := orm.NewOrm()
 	var incidencias []Incidencia
 	_, err := o.QueryTable(new(Incidencia)).All(&incidencias)
-	return incidencias, err
+	if err != nil {
+		return nil, err
+	}
+	return incidencias, nil
 }
 
-// Crear una incidencia
 func (i *Incidencia) Create() error {
 	o := orm.NewOrm()
-	_, err := o.Insert(i)
-	return err
+	id, err := o.Insert(i)
+	if err != nil {
+		return err
+	}
+	i.IdIncidencia = int(id)
+	return nil
 }
-
-
-
