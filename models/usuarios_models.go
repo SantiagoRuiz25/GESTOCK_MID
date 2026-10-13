@@ -15,6 +15,8 @@ type Usuario struct {
 
 type SesionActiva struct {
 	IdSesion  int `json:"id_sesion"`
+
+	
 	IdUsuario int  `json:"id_usuario"`
 	Token     string `json:"token"`
 	FechaHora string `json:"fecha_hora"`

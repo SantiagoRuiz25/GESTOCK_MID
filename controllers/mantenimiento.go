@@ -34,3 +34,16 @@ func CreateMantenimiento(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, nuevoMantenimiento)
 }
+
+func UpdateMantenimiento(c *gin.Context) {
+	var mantenimiento models.Mantenimiento
+	if err := c.ShouldBindJSON(&mantenimiento); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
+		return
+	}
+	if err := models.UpdateMantenimiento(&mantenimiento); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar el mantenimiento"})
+		return
+	}
+	c.JSON(http.StatusOK, mantenimiento)
+}
