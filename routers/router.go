@@ -3,13 +3,13 @@ package routers
 import (
 	"GESTOCK_MID/controllers"
 
-	web "github.com/beego/beego/v2/server/web"
+	beego "github.com/beego/beego/v2/server/web"
 )
 
 func init() {
-	// Rutas de bodegas e incidencias
-	web.Router("/bodegas/:id", &controllers.BodegasController{}, "get:GetById")
-	web.Router("/bodegas", &controllers.BodegasController{}, "post:Post")
-	web.Router("/v1/bodegas/:id", &controllers.BodegasController{}, "get:GetById")
-	web.Router("/v1/bodegas", &controllers.BodegasController{}, "post:Post")
+	beego.Router("/v1/usuarios", &controllers.UsuariosController{}, "get:GetAll;post:Post")
+	beego.Router("/v1/usuarios/:id", &controllers.UsuariosController{}, "put:Put;delete:Delete")
+	beego.Router("/v1/usuarios/login", &controllers.UsuariosController{}, "post:Login")
+	beego.Router("/v1/sesiones", &controllers.UsuariosController{}, "get:GetActiveSessions")
+	beego.Router("/v1/logout/:id", &controllers.UsuariosController{}, "post:Logout")
 }

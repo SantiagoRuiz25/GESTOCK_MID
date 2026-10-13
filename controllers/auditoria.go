@@ -74,3 +74,4 @@ func DeleteAuditoria(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Auditoría eliminada correctamente"})
 }
+	

@@ -1,16 +1,16 @@
 package controllers
 
 import (
-	"GESTOCK_MID/models"
 	"encoding/json"
 	"strconv"
 
-	"github.com/beego/beego/v2/server/web"
-	_ "github.com/beego/beego/v2/server/web"
+	"GESTOCK_MID/models"
+
+	beego "github.com/beego/beego/v2/server/web"
 )
 
 type BodegasController struct {
-	web.Controller
+	beego.Controller
 }
 
 func (c *BodegasController) GetById() {
@@ -24,13 +24,13 @@ func (c *BodegasController) GetById() {
 		}
 		c.ServeJSON()
 		return
-	} 
+	}
 
-	id, err := strconv.Atoi(idBodega)	
-	if err !=nil || id <= 0 {
+	id, err := strconv.Atoi(idBodega)
+	if err != nil || id <= 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status": 404,
+			"Status":  404,
 			"Mensaje": "Id ingresado es invalido",
 		}
 		c.ServeJSON()
@@ -39,8 +39,7 @@ func (c *BodegasController) GetById() {
 	}
 }
 
-
-	func (c *BodegasController) Post(){
+func (c *BodegasController) Post() {
 	var nuevaBodega models.Bodegas
 
 	err := json.Unmarshal(c.Ctx.Input.RequestBody, &nuevaBodega)
@@ -54,7 +53,7 @@ func (c *BodegasController) GetById() {
 		return
 	}
 
-	if nuevaBodega.Nombre == "" || nuevaBodega.Codigo  <=0 {
+	if nuevaBodega.Nombre == "" || nuevaBodega.Codigo <= 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
 			"Status":  400,
@@ -72,10 +71,3 @@ func (c *BodegasController) GetById() {
 	}
 	c.ServeJSON()
 }
-
-
-
-
-
-
-
