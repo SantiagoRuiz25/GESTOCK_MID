@@ -1,7 +1,7 @@
 package models
 
 import (
-	"GESTOCK_MID/db" // Única importación requerida para conectar con la base de datos
+	"github.com/beego/beego/v2/client/orm"
 )
 
 type Mantenimiento struct {
@@ -12,29 +12,33 @@ type Mantenimiento struct {
 	FechaProgramada string `json:"fecha_programada"`
 }
 
-// Obtener todos los mantenimientos
+// Consultar todos los mantenimientos
+
 func GetAllMantenimientos() ([]Mantenimiento, error) {
-	// Se usa directamente db.DB que ya está configurado globalmente
-	rows, err := db.DB.Query("SELECT id, equipo_id, tipo, detalles, fecha_programada FROM mantenimiento")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
+	o := orm.NewOrm()
 	var mantenimientos []Mantenimiento
-	for rows.Next() {
-		var m Mantenimiento
-		err := rows.Scan(&m.ID, &m.EquipoID, &m.Tipo, &m.Detalles, &m.FechaProgramada)
-		if err != nil {
-			return nil, err
-		}
-		mantenimientos = append(mantenimientos, m)
-	}
-	return mantenimientos, nil
+	_, err := o.QueryTable(new(Mantenimiento)).All(&mantenimientos)
+	return mantenimientos, err
 }
 
-// Crear un mantenimiento
+// Crear un nuevo mantenimiento
 func (m *Mantenimiento) Create() error {
-	query := "INSERT INTO mantenimiento (equipo_id, tipo, detalles, fecha_programada) VALUES ($1, $2, $3, $4) RETURNING id"
-	return db.DB.QueryRow(query, m.EquipoID, m.Tipo, m.Detalles, m.FechaProgramada).Scan(&m.ID)
+	o := orm.NewOrm()
+	_, err := o.Insert(m)
+	return err
 }
+
+// Actualizar un mantenimiento existente
+func UpdateMantenimiento(m *Mantenimiento) error {
+	o := orm.NewOrm()
+	_, err := o.Update(m)
+	return err
+}
+
+// Eliminar un mantenimiento por ID
+func DeleteMantenimiento(id int) error {
+	o := orm.NewOrm()
+	_, err := o.Delete(&Mantenimiento{ID: id})
+	return err
+}
+

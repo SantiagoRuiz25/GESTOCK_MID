@@ -1,55 +1,53 @@
  package models
 
 import (
-	"GESTOCK_MID/db"
+	"github.com/beego/beego/v2/client/orm"
 )
 
 type Auditoria struct {
-	IdAuditoria int    `json:"id_auditoria"`
-	Accion	  string `json:"accion"`
-	TablaAfectada string `json:"tabla_afectada"`
-	IdUsuario int    `json:"id_usuario"`
-	FechaHora string `json:"fecha_hora"`
-	DetallesCambios string `json:"detalles_cambios"`
+	IdAuditoria     int    `orm:"column(id_auditoria);pk;auto" json:"id_auditoria"`
+	Accion          string `orm:"column(accion)" json:"accion"`
+	TablaAfectada   string `orm:"column(tabla_afectada)" json:"tabla_afectada"`
+	IdUsuario       int    `orm:"column(id_usuario)" json:"id_usuario"`
+	FechaHora       string `orm:"column(fecha_hora)" json:"fecha_hora"`
+	DetallesCambios string `orm:"column(detalles_cambios)" json:"detalles_cambios"`
 }
 
+// Define el nombre exacto de la tabla en tu base de datos de pgAdmin
+func (t *Auditoria) TableName() string {
+	return "auditoria"
+}
+
+// Registra el modelo automáticamente al iniciar
+func init() {
+	orm.RegisterModel(new(Auditoria))
+}
+
+// Obtener todas las auditorías
 func GetAllAuditorias() ([]Auditoria, error) {
-	rows, err := db.DB.Query("SELECT id_auditoria, accion, tabla_afectada, id_usuario, fecha_hora, detalles_cambios FROM auditoria")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
+	o := orm.NewOrm()
 	var auditorias []Auditoria
-	for rows.Next() {
-		var a Auditoria
-		err := rows.Scan(&a.IdAuditoria, &a.Accion, &a.TablaAfectada, &a.IdUsuario, &a.FechaHora, &a.DetallesCambios)
-		if err != nil {
-			return nil, err
-		}
-		auditorias = append(auditorias, a)
-	}
-	return auditorias, nil
+	_, err := o.QueryTable(new(Auditoria)).All(&auditorias)
+	return auditorias, err
 }
 
-// crear
-
+// Crear una auditoría
 func (a *Auditoria) Create() error {
-	_, err := db.DB.Exec("INSERT INTO auditoria (id_auditoria, accion, tabla_afectada, id_usuario, fecha_hora, detalles_cambios) VALUES (?, ?, ?, ?, ?, ?)", a.IdAuditoria, a.Accion, a.TablaAfectada, a.IdUsuario, a.FechaHora, a.DetallesCambios)
+	o := orm.NewOrm()
+	_, err := o.Insert(a)
 	return err
 }
 
-// actualizar
-
-func (a *Auditoria) Update(id int) error {
-	_, err := db.DB.Exec("UPDATE auditoria SET accion = ?, tabla_afectada = ?, id_usuario = ?, fecha_hora = ?, detalles_cambios = ? WHERE id_auditoria = ?", a.Accion, a.TablaAfectada, a.IdUsuario, a.FechaHora, a.DetallesCambios, id)
+// Actualizar una auditoría
+func (a *Auditoria) Update() error {
+	o := orm.NewOrm()
+	_, err := o.Update(a)
 	return err
 }
 
-// eliminar
-
-func (a *Auditoria) Delete(id int) error {
-	_, err := db.DB.Exec("DELETE FROM auditoria WHERE id_auditoria = ?", id)
+// Eliminar una auditoría por ID
+func DeleteAuditoria(id int) error {
+	o := orm.NewOrm()
+	_, err := o.Delete(&Auditoria{IdAuditoria: id})
 	return err
 }
-

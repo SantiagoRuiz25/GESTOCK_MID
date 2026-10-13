@@ -1,7 +1,7 @@
 package models
 
 import (
-	"GESTOCK_MID/db"
+	"github.com/beego/beego/v2/client/orm"
 )
 
 type Incidencia struct {
@@ -15,27 +15,18 @@ type Incidencia struct {
 // Consultar
 
 func GetAllIncidencias() ([]Incidencia, error) {
-	rows, err := db.DB.Query("SELECT id_incidencia, descripcion, estado, fecha_creacion, id_usuario FROM incidencia")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
+	o := orm.NewOrm()
 	var incidencias []Incidencia
-	for rows.Next() {
-		var i Incidencia
-		err := rows.Scan(&i.IdIncidencia, &i.Descripcion, &i.Estado, &i.Fecha_creacion, &i.IdUsuario)
-		if err != nil {
-			return nil, err
-		}
-		incidencias = append(incidencias, i)
-	}
-	return incidencias, nil
+	_, err := o.QueryTable(new(Incidencia)).All(&incidencias)
+	return incidencias, err
 }
 
-// Crear
-
+// Crear una incidencia
 func (i *Incidencia) Create() error {
-	_, err := db.DB.Exec("INSERT INTO incidencia (descripcion, estado, fecha_creacion, id_usuario) VALUES (?, ?, ?, ?)", i.Descripcion, i.Estado, i.Fecha_creacion, i.IdUsuario)
+	o := orm.NewOrm()
+	_, err := o.Insert(i)
 	return err
 }
+
+
+
