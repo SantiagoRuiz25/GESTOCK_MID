@@ -1,14 +1,15 @@
 package controllers
 
 import (
-	"GESTOCK_MID/models"
 	"net/http"
-	"github.com/gin-gonic/gin"
 	"strconv"
+
+	"GESTOCK_MID/models"
+
+	"github.com/gin-gonic/gin"
 )
 
-// buscar
-
+// Buscar todas las auditorías
 func GetAuditorias(c *gin.Context) {
 	auditorias, err := models.GetAllAuditorias()
 	if err != nil {
@@ -18,9 +19,7 @@ func GetAuditorias(c *gin.Context) {
 	c.JSON(http.StatusOK, auditorias)
 }
 
-
-// crear
-
+// Crear una auditoría
 func CreateAuditoria(c *gin.Context) {
 	var auditoria models.Auditoria
 	if err := c.ShouldBindJSON(&auditoria); err != nil {
@@ -34,8 +33,7 @@ func CreateAuditoria(c *gin.Context) {
 	c.JSON(http.StatusCreated, auditoria)
 }
 
-// actualizar
-
+// Actualizar una auditoría
 func UpdateAuditoria(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -50,15 +48,17 @@ func UpdateAuditoria(c *gin.Context) {
 		return
 	}
 
-	if err := auditoriaActualizada.Update(id); err != nil {
+	// Usamos la variable 'id' asignándola al modelo para actualizar el registro correcto
+	auditoriaActualizada.IdAuditoria = id
+
+	if err := auditoriaActualizada.Update(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Auditoría actualizada correctamente"})
 }
 
-// eliminar
-
+// Eliminar una auditoría
 func DeleteAuditoria(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -67,8 +67,8 @@ func DeleteAuditoria(c *gin.Context) {
 		return
 	}
 
-	var auditoria models.Auditoria
-	if err := auditoria.Delete(id); err != nil {
+	// Se eliminó la variable 'var auditoria' innecesaria y se usa directamente el 'id'
+	if err := models.DeleteAuditoria(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -55,7 +55,7 @@ func (c *ProductosController) Post() {
 
 if nuevoProducto.Nombre == "" || nuevoProducto.Codigo == "" {
 		c.Data["json"] = map[string]interface{}{
-			"Success": false,
+			"Success": false,   
 			"Status":  400,
 			"Message": "Campos obligatorios incompletos",
 		}
