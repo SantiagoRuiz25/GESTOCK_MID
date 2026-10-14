@@ -14,10 +14,6 @@ type Auditoria struct {
 	DetallesCambios string `orm:"column(detalles_cambios)" json:"detalles_cambios"`
 }
 
-func (t *Auditoria) TableName() string {
-	return "auditoria"
-}
-
 // Define el nombre exacto de la tabla en tu base de datos de pgAdmin
 func (t *Auditoria) TableName() string {
 	return "auditoria"
@@ -37,9 +33,6 @@ func GetAllAuditorias() ([]Auditoria, error) {
 		return nil, err
 	}
 	return auditorias, nil
-
-
-	return auditorias, err
 }
 
 // Crear una auditoría
@@ -75,11 +68,6 @@ func (a *Auditoria) Delete(id int) error {
 		return err
 	}
 	return errors.New("auditoria no encontrada")
-// Actualizar una auditoría
-func (a *Auditoria) Update() error {
-	o := orm.NewOrm()
-	_, err := o.Update(a)
-	return err
 }
 
 // Eliminar una auditoría por ID
@@ -87,5 +75,4 @@ func DeleteAuditoria(id int) error {
 	o := orm.NewOrm()
 	_, err := o.Delete(&Auditoria{IdAuditoria: id})
 	return err
-}
 }
