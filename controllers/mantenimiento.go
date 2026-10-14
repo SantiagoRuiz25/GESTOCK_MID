@@ -6,6 +6,11 @@ import (
 	"GESTOCK_MID/models"
 
 	beego "github.com/beego/beego/v2/server/web"
+	"net/http"
+
+	"GESTOCK_MID/models"
+
+	"github.com/gin-gonic/gin"
 )
 
 type MantenimientoController struct {
@@ -14,6 +19,7 @@ type MantenimientoController struct {
 
 // GET: Listar mantenimientos
 func (c *MantenimientoController) GetAll() {
+func GetMantenimientos(c *gin.Context) {
 	mantenimientos, err := models.GetAllMantenimientos()
 	if err != nil {
 		c.Ctx.Output.SetStatus(500)
@@ -74,6 +80,8 @@ func (c *MantenimientoController) Post() {
 
 // PUT: Actualizar mantenimiento
 func (c *MantenimientoController) Put() {
+
+func UpdateMantenimiento(c *gin.Context) {
 	var mantenimiento models.Mantenimiento
 
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &mantenimiento); err != nil {

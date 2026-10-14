@@ -288,3 +288,36 @@ func (c *BodegasController) Delete() {
 
 	client := &http.Client{}
 	req, errReq := http.
+	req, errReq := http.NewRequest("DELETE", "http://localhost:8080/v1/bodega/"+strconv.Itoa(id), nil)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error de conexión con el servicio CRUD",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	respuesta, errCrud := client.Do(req)
+	if errCrud != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error de conexión con el servicio CRUD",
+		}
+		c.ServeJSON()
+		return
+	}
+	defer respuesta.Body.Close()
+
+	c.Ctx.Output.SetStatus(200)
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Bodega eliminada correctamente",
+	}
+	c.ServeJSON()
+}

@@ -16,6 +16,7 @@ type Auditoria struct {
 }
 
 // Define el nombre exacto de la tabla en PostgreSQL
+// Define el nombre exacto de la tabla en tu base de datos de pgAdmin
 func (t *Auditoria) TableName() string {
 	return "auditoria"
 }
@@ -71,4 +72,11 @@ func DeleteAuditoria(id int) error {
 		return err
 	}
 	return errors.New("auditoria no encontrada")
+}
+
+// Eliminar una auditoría por ID
+func DeleteAuditoria(id int) error {
+	o := orm.NewOrm()
+	_, err := o.Delete(&Auditoria{IdAuditoria: id})
+	return err
 }
