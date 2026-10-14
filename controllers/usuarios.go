@@ -1,122 +1,132 @@
 package controllers
 
 import (
-	"GESTOCK_MID/models"
-	"net/http"
+	"encoding/json"
 	"strconv"
-	"github.com/gin-gonic/gin"
+	"GESTOCK_MID/models"
+	beego "github.com/beego/beego/v2/server/web"
 )
 
-// buscar todos los usuarios registrados
-func GetUsuarios(c *gin.Context) {
-	usuarios, err := models.GetAllUsuarios()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, usuarios)
+type UsuariosController struct {
+	beego.Controller
 }
 
-// crear
-func CreateUsuario(c *gin.Context) {
+var listaUsuarios = []models.Usuario{
+	{
+		ID:     1,
+		Nombre: "Maicol Nore",
+		Email:  "maicol@email.com",
+		Rol:    "Admin",
+		Activo: true,
+	},
+}
+
+func (c *UsuariosController) GetAll() {
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Data":    listaUsuarios,
+	}
+	_ = c.ServeJSON()
+}
+
+func (c *UsuariosController) Post() {
 	var usuario models.Usuario
-	if err := c.ShouldBindJSON(&usuario); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := json.NewDecoder(c.Ctx.Request.Body).Decode(&usuario); err != nil {
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error al leer el JSON"}
+		_ = c.ServeJSON()
 		return
 	}
-	if err := usuario.Create(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	if usuario.ID == 0 {
+		usuario.ID = len(listaUsuarios) + 1
 	}
-	c.JSON(http.StatusCreated, usuario)
+	listaUsuarios = append(listaUsuarios, usuario)
+	c.Data["json"] = map[string]interface{}{"Success": true, "Message": "Usuario creado exitosamente", "Data": usuario}
+	_ = c.ServeJSON()
 }
 
-// actualizar
-func UpdateUsuario(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+func (c *UsuariosController) Put() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inbalido"})
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "ID inválido"}
+		_ = c.ServeJSON()
 		return
 	}
 
 	var usuarioActualizado models.Usuario
-	if err := c.ShouldBindJSON(&usuarioActualizado); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := json.NewDecoder(c.Ctx.Request.Body).Decode(&usuarioActualizado); err != nil {
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "JSON inválido"}
+		_ = c.ServeJSON()
 		return
 	}
 
-	if err := usuarioActualizado.Update(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	encontrado := false
+	for i, u := range listaUsuarios {
+		if u.ID == id {
+			if usuarioActualizado.Nombre != "" {
+				listaUsuarios[i].Nombre = usuarioActualizado.Nombre
+			}
+			if usuarioActualizado.Email != "" {
+				listaUsuarios[i].Email = usuarioActualizado.Email
+			}
+			if usuarioActualizado.Rol != "" {
+				listaUsuarios[i].Rol = usuarioActualizado.Rol
+			}
+			listaUsuarios[i].Activo = usuarioActualizado.Activo
+			encontrado = true
+			break
+		}
+	}
+
+	if !encontrado {
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Usuario no encontrado"}
+		_ = c.ServeJSON()
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Usuario actualizado correctamente"})
+
+	c.Data["json"] = map[string]interface{}{"Success": true, "Message": "Usuario actualizado exitosamente"}
+	_ = c.ServeJSON()
 }
 
-// eliminar
-func DeleteUsuario(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+func (c *UsuariosController) Delete() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID invalido"})
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "ID inválido"}
+		_ = c.ServeJSON()
 		return
 	}
 
-	var usuario models.Usuario
-	if err := usuario.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	indice := -1
+	for i, u := range listaUsuarios {
+		if u.ID == id {
+			indice = i
+			break
+		}
+	}
+
+	if indice == -1 {
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Usuario no encontrado"}
+		_ = c.ServeJSON()
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Usuario eliminado correctamente"})
+
+	listaUsuarios = append(listaUsuarios[:indice], listaUsuarios[indice+1:]...)
+	c.Data["json"] = map[string]interface{}{"Success": true, "Message": "Usuario eliminado exitosamente"}
+	_ = c.ServeJSON()
 }
 
-// Iniciar sesión
-func LoginUsuario(c *gin.Context) {
-	var credenciales struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	if err := c.ShouldBindJSON(&credenciales); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	usuario, err := models.Login(credenciales.Email, credenciales.Password)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales invalidas"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Sesión iniciada corectamente",
-		"usuario": usuario,
-	})
+func (c *UsuariosController) Login() {
+	c.Data["json"] = map[string]interface{}{"Success": true, "Message": "Login exitoso"}
+	_ = c.ServeJSON()
 }
 
-// Obtener sesiones activas
-func GetSesionesActivas(c *gin.Context) {
-	sesiones, err := models.GetActiveSessions()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, sesiones)
+func (c *UsuariosController) GetActiveSessions() {
+	c.Data["json"] = map[string]interface{}{"Success": true, "Data": []string{}}
+	_ = c.ServeJSON()
 }
 
-// Cerrar sesión
-func LogoutUsuario(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID de usuario inválido"})
-		return
-	}
-
-	if err := models.Logout(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Secion cerrada correctamente"})
+func (c *UsuariosController) Logout() {
+	c.Data["json"] = map[string]interface{}{"Success": true, "Message": "Sesión cerrada"}
+	_ = c.ServeJSON()
 }

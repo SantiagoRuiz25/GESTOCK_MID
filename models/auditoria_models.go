@@ -1,6 +1,7 @@
- package models
+package models
 
 import (
+	"errors"
 	"github.com/beego/beego/v2/client/orm"
 )
 
@@ -28,7 +29,10 @@ func GetAllAuditorias() ([]Auditoria, error) {
 	o := orm.NewOrm()
 	var auditorias []Auditoria
 	_, err := o.QueryTable(new(Auditoria)).All(&auditorias)
-	return auditorias, err
+	if err != nil {
+		return nil, err
+	}
+	return auditorias, nil
 }
 
 // Crear una auditoría
@@ -38,11 +42,32 @@ func (a *Auditoria) Create() error {
 	return err
 }
 
-// Actualizar una auditoría
-func (a *Auditoria) Update() error {
+func (a *Auditoria) Update(id int) error {
 	o := orm.NewOrm()
-	_, err := o.Update(a)
-	return err
+	auditoria := Auditoria{IdAuditoria: id}
+	
+	if err := o.Read(&auditoria); err == nil {
+		auditoria.Accion = a.Accion
+		auditoria.TablaAfectada = a.TablaAfectada
+		auditoria.IdUsuario = a.IdUsuario
+		auditoria.FechaHora = a.FechaHora
+		auditoria.DetallesCambios = a.DetallesCambios
+		
+		_, err := o.Update(&auditoria, "Accion", "TablaAfectada", "IdUsuario", "FechaHora", "DetallesCambios")
+		return err
+	}
+	return errors.New("auditoria no encontrada")
+}
+
+func (a *Auditoria) Delete(id int) error {
+	o := orm.NewOrm()
+	auditoria := Auditoria{IdAuditoria: id}
+	
+	if err := o.Read(&auditoria); err == nil {
+		_, err := o.Delete(&auditoria)
+		return err
+	}
+	return errors.New("auditoria no encontrada")
 }
 
 // Eliminar una auditoría por ID

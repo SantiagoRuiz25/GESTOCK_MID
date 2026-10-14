@@ -48,10 +48,8 @@ func UpdateAuditoria(c *gin.Context) {
 		return
 	}
 
-	// Usamos la variable 'id' asignándola al modelo para actualizar el registro correcto
-	auditoriaActualizada.IdAuditoria = id
-
-	if err := auditoriaActualizada.Update(); err != nil {
+	// Llamamos al método Update pasando el ID de los parámetros de la ruta
+	if err := auditoriaActualizada.Update(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -67,7 +65,6 @@ func DeleteAuditoria(c *gin.Context) {
 		return
 	}
 
-	// Se eliminó la variable 'var auditoria' innecesaria y se usa directamente el 'id'
 	if err := models.DeleteAuditoria(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
