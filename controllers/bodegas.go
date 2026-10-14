@@ -287,6 +287,7 @@ func (c *BodegasController) Delete() {
 	}
 
 	client := &http.Client{}
+	req, errReq := http.
 	req, errReq := http.NewRequest("DELETE", "http://localhost:8080/v1/bodega/"+strconv.Itoa(id), nil)
 	if errReq != nil {
 		c.Ctx.Output.SetStatus(500)

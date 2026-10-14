@@ -12,6 +12,15 @@ func init() {
 	beego.Router("/v1/usuarios/login", &controllers.UsuariosController{}, "post:Login")
 	beego.Router("/v1/sesiones", &controllers.UsuariosController{}, "get:GetActiveSessions")
 	beego.Router("/v1/logout/:id", &controllers.UsuariosController{}, "post:Logout")
+
+	beego.Router("/v1/bodegas", &controllers.BodegasController{}, "get:GetAll;post:Post")
+	beego.Router("/v1/bodegas/:id", &controllers.BodegasController{}, "get:GetById;put:Put;delete:Delete")
+
+	beego.Router("/v1/productos", &controllers.ProductosController{}, "get:GetAll;post:Post")
+	beego.Router("/v1/productos/:id", &controllers.ProductosController{}, "get:GetById;put:Put;delete:Delete")
+
+	beego.Router("/v1/categorias", &controllers.CategoriasController{}, "get:GetAll;post:Post")
+	beego.Router("/v1/categorias/:id", &controllers.CategoriasController{}, "get:GetById;put:Put;delete:Delete")
 	
 	beego.Router("/v1/bodega", &controllers.BodegasController{}, "get:GetAll;post:Post")
 	beego.Router("/v1/bodega/:id", &controllers.BodegasController{}, "get:GetById;put:Put;delete:Delete")

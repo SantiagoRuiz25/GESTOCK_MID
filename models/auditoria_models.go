@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+
 	"github.com/beego/beego/v2/client/orm"
 )
 
@@ -14,6 +15,7 @@ type Auditoria struct {
 	DetallesCambios string `orm:"column(detalles_cambios)" json:"detalles_cambios"`
 }
 
+// Define el nombre exacto de la tabla en PostgreSQL
 // Define el nombre exacto de la tabla en tu base de datos de pgAdmin
 func (t *Auditoria) TableName() string {
 	return "auditoria"
@@ -42,27 +44,29 @@ func (a *Auditoria) Create() error {
 	return err
 }
 
+// Actualizar una auditoría por ID
 func (a *Auditoria) Update(id int) error {
 	o := orm.NewOrm()
 	auditoria := Auditoria{IdAuditoria: id}
-	
+
 	if err := o.Read(&auditoria); err == nil {
 		auditoria.Accion = a.Accion
 		auditoria.TablaAfectada = a.TablaAfectada
 		auditoria.IdUsuario = a.IdUsuario
 		auditoria.FechaHora = a.FechaHora
 		auditoria.DetallesCambios = a.DetallesCambios
-		
+
 		_, err := o.Update(&auditoria, "Accion", "TablaAfectada", "IdUsuario", "FechaHora", "DetallesCambios")
 		return err
 	}
 	return errors.New("auditoria no encontrada")
 }
 
-func (a *Auditoria) Delete(id int) error {
+// Eliminar una auditoría por ID
+func DeleteAuditoria(id int) error {
 	o := orm.NewOrm()
 	auditoria := Auditoria{IdAuditoria: id}
-	
+
 	if err := o.Read(&auditoria); err == nil {
 		_, err := o.Delete(&auditoria)
 		return err
