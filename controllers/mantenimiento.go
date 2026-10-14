@@ -2,15 +2,15 @@ package controllers
 
 import (
 	"net/http"
+
 	"GESTOCK_MID/models"
+
 	"github.com/gin-gonic/gin"
-	
 )
 
 // GET: Listar mantenimientos
 func GetMantenimientos(c *gin.Context) {
-	// Nota: Reemplaza db.DB por tu variable de conexión real si la tienes global
-	mantenimientos, err := models.GetAllMantenimientos() 
+	mantenimientos, err := models.GetAllMantenimientos()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener los mantenimientos"})
 		return
@@ -35,6 +35,7 @@ func CreateMantenimiento(c *gin.Context) {
 	c.JSON(http.StatusCreated, nuevoMantenimiento)
 }
 
+// PUT: Actualizar mantenimiento
 func UpdateMantenimiento(c *gin.Context) {
 	var mantenimiento models.Mantenimiento
 	if err := c.ShouldBindJSON(&mantenimiento); err != nil {
