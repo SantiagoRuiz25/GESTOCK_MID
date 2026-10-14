@@ -1,49 +1,109 @@
 package controllers
 
 import (
-	"net/http"
+	"encoding/json"
+
 	"GESTOCK_MID/models"
-	"github.com/gin-gonic/gin"
-	
+
+	beego "github.com/beego/beego/v2/server/web"
 )
 
+type MantenimientoController struct {
+	beego.Controller
+}
+
 // GET: Listar mantenimientos
-func GetMantenimientos(c *gin.Context) {
-	// Nota: Reemplaza db.DB por tu variable de conexión real si la tienes global
-	mantenimientos, err := models.GetAllMantenimientos() 
+func (c *MantenimientoController) GetAll() {
+	mantenimientos, err := models.GetAllMantenimientos()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener los mantenimientos"})
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener los mantenimientos",
+		}
+		c.ServeJSON()
 		return
 	}
-	c.JSON(http.StatusOK, mantenimientos)
+
+	c.Ctx.Output.SetStatus(200)
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Lista de mantenimientos obtenida con éxito",
+		"Data":    mantenimientos,
+	}
+	c.ServeJSON()
 }
 
 // POST: Crear mantenimiento
-func CreateMantenimiento(c *gin.Context) {
+func (c *MantenimientoController) Post() {
 	var nuevoMantenimiento models.Mantenimiento
 
-	if err := c.ShouldBindJSON(&nuevoMantenimiento); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &nuevoMantenimiento); err != nil {
+		c.Ctx.Output.SetStatus(400)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "Datos inválidos o formato JSON incorrecto",
+		}
+		c.ServeJSON()
 		return
 	}
 
 	if err := nuevoMantenimiento.Create(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al guardar el mantenimiento"})
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al guardar el mantenimiento",
+		}
+		c.ServeJSON()
 		return
 	}
 
-	c.JSON(http.StatusCreated, nuevoMantenimiento)
+	c.Ctx.Output.SetStatus(201)
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  201,
+		"Message": "Mantenimiento creado exitosamente",
+		"Data":    nuevoMantenimiento,
+	}
+	c.ServeJSON()
 }
 
-func UpdateMantenimiento(c *gin.Context) {
+// PUT: Actualizar mantenimiento
+func (c *MantenimientoController) Put() {
 	var mantenimiento models.Mantenimiento
-	if err := c.ShouldBindJSON(&mantenimiento); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &mantenimiento); err != nil {
+		c.Ctx.Output.SetStatus(400)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "Datos inválidos o formato JSON incorrecto",
+		}
+		c.ServeJSON()
 		return
 	}
+
 	if err := models.UpdateMantenimiento(&mantenimiento); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar el mantenimiento"})
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al actualizar el mantenimiento",
+		}
+		c.ServeJSON()
 		return
 	}
-	c.JSON(http.StatusOK, mantenimiento)
+
+	c.Ctx.Output.SetStatus(200)
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Mantenimiento actualizado exitosamente",
+		"Data":    mantenimiento,
+	}
+	c.ServeJSON()
 }

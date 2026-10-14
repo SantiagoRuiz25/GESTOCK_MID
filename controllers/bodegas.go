@@ -1,21 +1,14 @@
 package controllers
 
 import (
-<<<<<<< HEAD
-=======
 	"bytes"
->>>>>>> cc7130cc06b3decdb797421a33962ecf6505d501
 	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"GESTOCK_MID/models"
 
-<<<<<<< HEAD
 	beego "github.com/beego/beego/v2/server/web"
-=======
-	"github.com/beego/beego/v2/server/web"
->>>>>>> cc7130cc06b3decdb797421a33962ecf6505d501
 )
 
 type BodegasController struct {
@@ -78,18 +71,11 @@ func (c *BodegasController) GetById() {
 
 	id, err := strconv.Atoi(idBodega)
 	if err != nil || id <= 0 {
-<<<<<<< HEAD
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  404,
-			"Mensaje": "Id ingresado es invalido",
-=======
 		c.Ctx.Output.SetStatus(400)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
 			"Status":  400,
 			"Message": "Id ingresado es invalido",
->>>>>>> cc7130cc06b3decdb797421a33962ecf6505d501
 		}
 		c.ServeJSON()
 		return
@@ -132,10 +118,7 @@ func (c *BodegasController) GetById() {
 	c.ServeJSON()
 }
 
-<<<<<<< HEAD
-=======
 // 3. POST: Crear nueva bodega
->>>>>>> cc7130cc06b3decdb797421a33962ecf6505d501
 func (c *BodegasController) Post() {
 	var nuevaBodega models.Bodegas
 
@@ -152,10 +135,7 @@ func (c *BodegasController) Post() {
 	}
 
 	if nuevaBodega.Nombre == "" || nuevaBodega.Codigo <= 0 {
-<<<<<<< HEAD
-=======
 		c.Ctx.Output.SetStatus(400)
->>>>>>> cc7130cc06b3decdb797421a33962ecf6505d501
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
 			"Status":  400,
@@ -194,8 +174,6 @@ func (c *BodegasController) Post() {
 	}
 	c.ServeJSON()
 }
-<<<<<<< HEAD
-=======
 
 // 4. PUT: Actualizar bodega por ID
 func (c *BodegasController) Put() {
@@ -309,37 +287,4 @@ func (c *BodegasController) Delete() {
 	}
 
 	client := &http.Client{}
-	req, errReq := http.NewRequest("DELETE", "http://localhost:8080/v1/bodega/"+strconv.Itoa(id), nil)
-	if errReq != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	respuesta, errCrud := client.Do(req)
-	if errCrud != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-	defer respuesta.Body.Close()
-
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Bodega eliminada correctamente",
-	}
-	c.ServeJSON()
-}
->>>>>>> cc7130cc06b3decdb797421a33962ecf6505d501
+	req, errReq := http.
