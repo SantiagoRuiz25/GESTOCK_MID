@@ -1,26 +1,20 @@
 package main
 
 import (
-	_ "GESTOCK_MID/routers"
-
-	beego "github.com/beego/beego/v2/server/web"
-	_ "github.com/lib/pq"
-	_ "GESTOCK_MID/models" 
-	"GESTOCK_MID/db"// Importamos los modelos para que ejecuten su propio init()
+	"GESTOCK_MID/db"
+	_ "GESTOCK_MID/models" // Para que ejecuten su init()
 	"GESTOCK_MID/routers"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {
-	beego.Run()
+	// 1. Inicializa la conexión a la base de datos usando tu paquete local 'db'
 	db.ConnectDB()
 
-	// 2. Configura las rutas de tu API
+	// 2. Configura e inicia las rutas de tu API (usando tu enrutador)
 	r := routers.SetupRouter()
-
-	// 3. Arranca el servidor local
+	
+	// 3. Arranca el servidor local en el puerto 8080
 	r.Run(":8080")
 }
-
-
-
-

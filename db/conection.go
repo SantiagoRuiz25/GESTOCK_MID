@@ -14,7 +14,7 @@ func ConnectDB() {
 	host := "localhost"
 	port := 5432
 	user := "postgres"
-	password := "tu_contraseña_de_pgadmin" // Cambia por tu contraseña de pgAdmin
+	password := "postgres" // Cambia por tu contraseña de pgAdmin
 	dbname := "gestock_db"
 
 	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
