@@ -1,34 +1,32 @@
-
 package routers
 
 import (
 	"GESTOCK_MID/controllers"
 
-	"github.com/gin-gonic/gin"
+	beego "github.com/beego/beego/v2/server/web"
 )
 
-func SetupRouter() *gin.Engine {
-	r := gin.Default()
+func init() {
+	// 1. Usuarios y Sesiones
+	beego.Router("/v1/usuarios", &controllers.UsuariosController{}, "get:GetAll;post:Post")
+	beego.Router("/v1/usuarios/:id", &controllers.UsuariosController{}, "put:Put;delete:Delete")
+	beego.Router("/v1/usuarios/login", &controllers.UsuariosController{}, "post:Login")
+	beego.Router("/v1/sesiones", &controllers.UsuariosController{}, "get:GetActiveSessions")
+	beego.Router("/v1/logout/:id", &controllers.UsuariosController{}, "post:Logout")
 
-	// Rutas para incidencias
-	r.GET("/incidencias", controllers.GetIncidencias)
-	r.POST("/incidencias", controllers.CreateIncidencia)
+	// 2. Bodegas
+	beego.Router("/v1/bodegas", &controllers.BodegasController{}, "get:GetAll;post:Post")
+	beego.Router("/v1/bodegas/:id", &controllers.BodegasController{}, "get:GetById;put:Put;delete:Delete")
 
-	// Rutas para auditorías
-	r.GET("/auditorias", controllers.GetAuditorias)
-	r.POST("/auditorias", controllers.CreateAuditoria)
-	r.PUT("/auditorias/:id", controllers.UpdateAuditoria)
-	r.DELETE("/auditorias/:id", controllers.DeleteAuditoria)
+	// 3. Productos
+	beego.Router("/v1/productos", &controllers.ProductosController{}, "get:GetAll;post:Post")
+	beego.Router("/v1/productos/:id", &controllers.ProductosController{}, "get:GetById;put:Put;delete:Delete")
 
-	// Rutas para mantenimientos
-	r.GET("/mantenimientos", controllers.GetMantenimientos)
-	r.POST("/mantenimientos", controllers.CreateMantenimiento)
-	r.PUT("/mantenimientos/:id", controllers.UpdateMantenimiento)
+	// 4. Categorías
+	beego.Router("/v1/categorias", &controllers.CategoriasController{}, "get:GetAll;post:Post")
+	beego.Router("/v1/categorias/:id", &controllers.CategoriasController{}, "get:GetById;put:Put;delete:Delete")
 
-	// Rutas para operaciones
-	r.GET("/operaciones", controllers.GetOperaciones)
-	r.POST("/operaciones", controllers.CreateOperacion)
-	r.DELETE("/operaciones/:id", controllers.DeleteOperacion)
-
-	return r
+	// 5. Auditorías
+	beego.Router("/v1/auditorias", &controllers.AuditoriaController{}, "get:GetAll;post:Post")
+	beego.Router("/v1/auditorias/:id", &controllers.AuditoriaController{}, "get:GetById;put:Put;delete:Delete")
 }
