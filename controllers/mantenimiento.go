@@ -1,7 +1,7 @@
 
 package controllers
-
 import (
+<<<<<<< Updated upstream
 	"encoding/json"
 	"strconv"
 
@@ -18,27 +18,42 @@ type MantenimientoController struct {
 // GET: Listar todos los mantenimientos.
 func (c *MantenimientoController) GetAll() {
 	mantenimientos, err := models.GetAllMantenimientos()
-	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al obtener los mantenimientos",
-		}
-		c.ServeJSON()
-		return
-	}
+=======
+	"errors"
 
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Lista de mantenimientos obtenida con éxito",
-		"Data":    mantenimientos,
-	}
-	c.ServeJSON()
+	"github.com/beego/beego/v2/client/orm"
+)
+
+type Mantenimiento struct {
+	Id                int    `orm:"column(id_mantenimiento);pk;auto" json:"id_mantenimiento"`
+	Equipo            string `orm:"column(equipo)" json:"equipo"`
+	TipoMantenimiento string `orm:"column(tipo_mantenimiento)" json:"tipo_mantenimiento"`
+	FechaProgramada   string `orm:"column(fecha_programada)" json:"fecha_programada"`
+	Responsable       string `orm:"column(responsable)" json:"responsable"`
+	Estado            string `orm:"column(estado)" json:"estado"`
 }
 
+func (m *Mantenimiento) TableName() string {
+	return "mantenimiento"
+}
+
+func init() {
+	orm.RegisterModel(new(Mantenimiento))
+}
+
+// Obtener todos los mantenimientos
+func GetAllMantenimientos() ([]Mantenimiento, error) {
+	o := orm.NewOrm()
+	var lista []Mantenimiento
+	_, err := o.QueryTable(new(Mantenimiento)).All(&lista)
+>>>>>>> Stashed changes
+	if err != nil {
+		return nil, err
+	}
+	return lista, nil
+}
+
+<<<<<<< Updated upstream
 // POST: Crear un nuevo mantenimiento.
 func (c *MantenimientoController) Post() {
 	var nuevoMantenimiento models.Mantenimiento
@@ -128,3 +143,21 @@ func (c *MantenimientoController) Put() {
 	}
 	c.ServeJSON()
 }
+=======
+// Crear mantenimiento
+func (m *Mantenimiento) Create() error {
+	o := orm.NewOrm()
+	_, err := o.Insert(m)
+	return err
+}
+
+// Actualizar mantenimiento directamente con ORM
+func (m *Mantenimiento) Update() error {
+	o := orm.NewOrm()
+	if o.Read(m) == nil {
+		_, err := o.Update(m)
+		return err
+	}
+	return errors.New("mantenimiento no encontrado")
+}
+>>>>>>> Stashed changes

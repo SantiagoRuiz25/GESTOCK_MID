@@ -17,7 +17,7 @@ type BodegasController struct {
 
 // 1. GET ALL: Consultar todas las bodegas
 func (c *BodegasController) GetAll() {
-	respuesta, errCrud := http.Get("http://localhost:8080/v1/bodega")
+	respuesta, errCrud := http.Get("http://localhost:8081/v1/bodega")
 	if errCrud != nil {
 		c.Ctx.Output.SetStatus(500)
 		c.Data["json"] = map[string]interface{}{
@@ -81,7 +81,7 @@ func (c *BodegasController) GetById() {
 		return
 	}
 
-	respuesta, errCrud := http.Get("http://localhost:8080/v1/bodega/" + strconv.Itoa(id))
+	respuesta, errCrud := http.Get("http://localhost:8081/v1/bodega/" + strconv.Itoa(id))
 	if errCrud != nil {
 		c.Ctx.Output.SetStatus(500)
 		c.Data["json"] = map[string]interface{}{
@@ -219,7 +219,7 @@ func (c *BodegasController) Put() {
 	client := &http.Client{}
 	req, errReq := http.NewRequest(
 		"PUT",
-		"http://localhost:8080/v1/bodega/"+strconv.Itoa(id),
+		"http://localhost:8081/v1/bodega/"+strconv.Itoa(id),
 		bytes.NewBuffer(c.Ctx.Input.RequestBody),
 	)
 	if errReq != nil {
@@ -288,8 +288,7 @@ func (c *BodegasController) Delete() {
 	}
 
 	client := &http.Client{}
-	req, errReq := http.
-	req, errReq := http.NewRequest("DELETE", "http://localhost:8080/v1/bodega/"+strconv.Itoa(id), nil)
+	req, errReq := http.NewRequest("DELETE", "http://localhost:8081/v1/bodega/"+strconv.Itoa(id), nil)
 	if errReq != nil {
 		c.Ctx.Output.SetStatus(500)
 		c.Data["json"] = map[string]interface{}{
