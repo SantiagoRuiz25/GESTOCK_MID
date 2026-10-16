@@ -1,7 +1,9 @@
+
 package routers
 
 import (
 	"GESTOCK_MID/controllers"
+
 	"github.com/gin-gonic/gin"
 )
 
