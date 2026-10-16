@@ -1,25 +1,22 @@
+
 package controllers
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"GESTOCK_MID/models"
 
 	beego "github.com/beego/beego/v2/server/web"
-	"net/http"
-
-	"GESTOCK_MID/models"
-
-	"github.com/gin-gonic/gin"
 )
 
+// MantenimientoController controla las operaciones de mantenimiento.
 type MantenimientoController struct {
 	beego.Controller
 }
 
-// GET: Listar mantenimientos
+// GET: Listar todos los mantenimientos.
 func (c *MantenimientoController) GetAll() {
-func GetMantenimientos(c *gin.Context) {
 	mantenimientos, err := models.GetAllMantenimientos()
 	if err != nil {
 		c.Ctx.Output.SetStatus(500)
@@ -42,7 +39,7 @@ func GetMantenimientos(c *gin.Context) {
 	c.ServeJSON()
 }
 
-// POST: Crear mantenimiento
+// POST: Crear un nuevo mantenimiento.
 func (c *MantenimientoController) Post() {
 	var nuevoMantenimiento models.Mantenimiento
 
@@ -78,10 +75,23 @@ func (c *MantenimientoController) Post() {
 	c.ServeJSON()
 }
 
-// PUT: Actualizar mantenimiento
+// PUT: Actualizar un mantenimiento existente.
+// El ID se recibe mediante el parámetro de ruta :id.
 func (c *MantenimientoController) Put() {
+	idParam := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idParam)
 
-func UpdateMantenimiento(c *gin.Context) {
+	if err != nil || id <= 0 {
+		c.Ctx.Output.SetStatus(400)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "ID de mantenimiento inválido",
+		}
+		c.ServeJSON()
+		return
+	}
+
 	var mantenimiento models.Mantenimiento
 
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &mantenimiento); err != nil {
@@ -94,6 +104,9 @@ func UpdateMantenimiento(c *gin.Context) {
 		c.ServeJSON()
 		return
 	}
+
+	// El ID de la URL tiene prioridad sobre el ID enviado en el JSON.
+	mantenimiento.ID = id
 
 	if err := models.UpdateMantenimiento(&mantenimiento); err != nil {
 		c.Ctx.Output.SetStatus(500)

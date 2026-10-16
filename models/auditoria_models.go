@@ -57,6 +57,7 @@ func (a *Auditoria) Update(id int) error {
 		auditoria.DetallesCambios = a.DetallesCambios
 
 		_, err := o.Update(&auditoria, "Accion", "TablaAfectada", "IdUsuario", "FechaHora", "DetallesCambios")
+
 		return err
 	}
 	return errors.New("auditoria no encontrada")
@@ -74,9 +75,4 @@ func DeleteAuditoria(id int) error {
 	return errors.New("auditoria no encontrada")
 }
 
-// Eliminar una auditoría por ID
-func DeleteAuditoria(id int) error {
-	o := orm.NewOrm()
-	_, err := o.Delete(&Auditoria{IdAuditoria: id})
-	return err
-}
+

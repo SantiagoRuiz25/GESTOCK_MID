@@ -1,37 +1,40 @@
 package models
 
 import (
-	"github.com/beego/beego/v2/client/orm"
+	"GESTOCK_MID/db"
 )
 
 type Incidencia struct {
-	IdIncidencia   int    `orm:"column(id_incidencia);pk;auto" json:"id_incidencia"`
-	Descripcion    string `orm:"column(descripcion)" json:"descripcion"`
-	Estado         string `orm:"column(estado)" json:"estado"`
-	FechaCreacion  string `orm:"column(fecha_creacion)" json:"fecha_creacion"`
-	IdUsuario      int    `orm:"column(id_usuario)" json:"id_usuario"`
+	IdIncidencia   int    `json:"id_incidencia"`
+	Descripcion    string `json:"descripcion"`
+	Estado         string `json:"estado"`
+	Fecha_creacion string `json:"fecha_creacion"`
+	IdUsuario      int    `json:"id_usuario"`
 }
 
-func (t *Incidencia) TableName() string {
-	return "incidencia"
-}
-
+// 1. GET: Buscar / Obtener todas las incidencias
 func GetAllIncidencias() ([]Incidencia, error) {
-	o := orm.NewOrm()
-	var incidencias []Incidencia
-	_, err := o.QueryTable(new(Incidencia)).All(&incidencias)
+	rows, err := db.DB.Query("SELECT id_incidencia, descripcion, estado, fecha_creacion, id_usuario FROM incidencia")
 	if err != nil {
 		return nil, err
+	}
+	defer rows.Close()
+
+	var incidencias []Incidencia
+	for rows.Next() {
+		var i Incidencia
+		err := rows.Scan(&i.IdIncidencia, &i.Descripcion, &i.Estado, &i.Fecha_creacion, &i.IdUsuario)
+		if err != nil {
+			return nil, err
+		}
+		incidencias = append(incidencias, i)
 	}
 	return incidencias, nil
 }
 
+// 2. POST: Crear una incidencia
 func (i *Incidencia) Create() error {
-	o := orm.NewOrm()
-	id, err := o.Insert(i)
-	if err != nil {
-		return err
-	}
-	i.IdIncidencia = int(id)
-	return nil
+	query := "INSERT INTO incidencia (descripcion, estado, fecha_creacion, id_usuario) VALUES ($1, $2, $3, $4)"
+	_, err := db.DB.Exec(query, i.Descripcion, i.Estado, i.Fecha_creacion, i.IdUsuario)
+	return err
 }

@@ -145,6 +145,7 @@ func (c *BodegasController) Post() {
 		return
 	}
 
+	// Nota: Revisa si el puerto es 8081 o 8080 según tu arquitectura
 	respuesta, errCrud := http.Post(
 		"http://localhost:8081/v1/bodega",
 		"application/json",
