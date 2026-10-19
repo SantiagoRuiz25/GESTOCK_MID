@@ -1,54 +1,50 @@
 package models
 
 import (
-	"GESTOCK_MID/db"
+	"github.com/beego/beego/v2/client/orm"
 )
 
 type Mantenimiento struct {
-	ID              int    `json:"id"`
-	EquipoID        int    `json:"equipo_id"`
-	Tipo            string `json:"tipo"`
-	Detalles        string `json:"detalles"`
-	FechaProgramada string `json:"fecha_programada"`
+	ID              int    `orm:"column(id);pk;auto" json:"id"`
+	EquipoID        int    `orm:"column(equipo_id)" json:"equipo_id"`
+	Tipo            string `orm:"column(tipo)" json:"tipo"`
+	Detalles        string `orm:"column(detalles)" json:"detalles"`
+	FechaProgramada string `orm:"column(fecha_programada)" json:"fecha_programada"`
 }
 
-// 1. Obtener todos los mantenimientos
+func (t *Mantenimiento) TableName() string {
+	return "mantenimiento"
+}
+
+func init() {
+	orm.RegisterModel(new(Mantenimiento))
+}
+
+// 1. Obtener todos los mantenimientos (GET)
 func GetAllMantenimientos() ([]Mantenimiento, error) {
-	// Corregido: id_mantenimiento en lugar de id
-	rows, err := db.DB.Query("SELECT id_mantenimiento, equipo_id, tipo, detalles, fecha_programada FROM mantenimiento")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
+	o := orm.NewOrm()
 	var mantenimientos []Mantenimiento
-	for rows.Next() {
-		var m Mantenimiento
-		err := rows.Scan(&m.ID, &m.EquipoID, &m.Tipo, &m.Detalles, &m.FechaProgramada)
-		if err != nil {
-			return nil, err
-		}
-		mantenimientos = append(mantenimientos, m)
-	}
-	return mantenimientos, nil
+	_, err := o.QueryTable(new(Mantenimiento)).All(&mantenimientos)
+	return mantenimientos, err
 }
 
-// 2. Crear un mantenimiento
+// 2. Crear un mantenimiento (POST)
 func (m *Mantenimiento) Create() error {
-	query := "INSERT INTO mantenimiento (equipo_id, tipo, detalles, fecha_programada) VALUES ($1, $2, $3, $4) RETURNING id_mantenimiento"
-	return db.DB.QueryRow(query, m.EquipoID, m.Tipo, m.Detalles, m.FechaProgramada).Scan(&m.ID)
-}
-
-// 3. Actualizar un mantenimiento
-func UpdateMantenimiento(m *Mantenimiento) error {
-	query := "UPDATE mantenimiento SET equipo_id = $1, tipo = $2, detalles = $3, fecha_programada = $4 WHERE id_mantenimiento = $5"
-	_, err := db.DB.Exec(query, m.EquipoID, m.Tipo, m.Detalles, m.FechaProgramada, m.ID)
+	o := orm.NewOrm()
+	_, err := o.Insert(m)
 	return err
 }
 
-// 4. Eliminar un mantenimiento por ID
+// 3. Actualizar un mantenimiento (PUT) - Función Global
+func UpdateMantenimiento(m *Mantenimiento) error {
+	o := orm.NewOrm()
+	_, err := o.Update(m)
+	return err
+}
+
+// 4. Eliminar un mantenimiento por ID (DELETE)
 func DeleteMantenimiento(id int) error {
-	query := "DELETE FROM mantenimiento WHERE id_mantenimiento = $1"
-	_, err := db.DB.Exec(query, id)
+	o := orm.NewOrm()
+	_, err := o.Delete(&Mantenimiento{ID: id})
 	return err
 }
