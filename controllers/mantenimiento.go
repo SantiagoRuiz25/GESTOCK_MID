@@ -1,69 +1,108 @@
 package controllers
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
-
-	"GESTOCK_MID/models"
-
-	"github.com/gin-gonic/gin"
+	beego "github.com/beego/beego/v2/server/web"
 )
 
-// GET: Listar mantenimientos
-func GetMantenimientos(c *gin.Context) {
-	mantenimientos, err := models.GetAllMantenimientos()
+type MantenimientoController struct {
+	beego.Controller
+}
+
+func (c *MantenimientoController) GetAll() {
+	client := &http.Client{}
+	req, errReq := http.NewRequest("GET", "http://localhost:8081/mantenimientos", nil)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición al CRUD"}
+		c.ServeJSON()
+		return
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener los mantenimientos"})
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+		c.ServeJSON()
 		return
 	}
-	c.JSON(http.StatusOK, mantenimientos)
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	c.ServeJSON()
 }
 
-// POST: Crear mantenimiento
-func CreateMantenimiento(c *gin.Context) {
-	var nuevoMantenimiento models.Mantenimiento
+func (c *MantenimientoController) GetById() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, _ := strconv.Atoi(idStr)
 
-	if err := c.ShouldBindJSON(&nuevoMantenimiento); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
+	client := &http.Client{}
+	req, errReq := http.NewRequest("GET", "http://localhost:8081/mantenimientos/"+strconv.Itoa(id), nil)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición"}
+		c.ServeJSON()
 		return
 	}
 
-	if err := nuevoMantenimiento.Create(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al guardar el mantenimiento"})
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el CRUD"}
+		c.ServeJSON()
 		return
 	}
+	defer resp.Body.Close()
 
-	c.JSON(http.StatusCreated, nuevoMantenimiento)
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	c.ServeJSON()
 }
 
-// PUT: Actualizar mantenimiento
-func UpdateMantenimiento(c *gin.Context) {
-	// 1. Obtener y validar el ID de la URL
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
-	if err != nil || id <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID de mantenimiento inválido"})
+func (c *MantenimientoController) Post() {
+	client := &http.Client{}
+	req, errReq := http.NewRequest(
+		"POST",
+		"http://localhost:8081/mantenimientos",
+		bytes.NewBuffer(c.Ctx.Input.RequestBody),
+	)
+
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+		c.ServeJSON()
 		return
 	}
 
-	// 2. Leer el cuerpo de la petición (JSON)
-	var mantenimiento models.Mantenimiento
-	if err := c.ShouldBindJSON(&mantenimiento); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "No se pudo comunicar con el servidor CRUD"}
+		c.ServeJSON()
 		return
 	}
+	defer resp.Body.Close()
 
-	// 3. Asignar el ID obtenido de la URL al modelo
-	mantenimiento.ID = id
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	json.Unmarshal(body, &resultado)
 
-	// 4. Ejecutar la actualización en la base de datos
-	if err := models.UpdateMantenimiento(&mantenimiento); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar el mantenimiento"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Mantenimiento actualizado exitosamente",
-		"data":    mantenimiento,
-	})
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	c.ServeJSON()
 }

@@ -5,22 +5,24 @@ import (
 )
 
 type Mantenimiento struct {
-	ID              int    `orm:"column(id);pk;auto" json:"id"`
-	EquipoID        int    `orm:"column(equipo_id)" json:"equipo_id"`
+	IdMantenimiento int    `orm:"column(id_mantenimiento);pk;auto" json:"id_mantenimiento"`
 	Tipo            string `orm:"column(tipo)" json:"tipo"`
-	Detalles        string `orm:"column(detalles)" json:"detalles"`
-	FechaProgramada string `orm:"column(fecha_programada)" json:"fecha_programada"`
+	Descripcion     string `orm:"column(descripcion)" json:"descripcion"`
+	Fecha           string `orm:"column(fecha)" json:"fecha"`
+	IdBodega        int    `orm:"column(id_bodega)" json:"id_bodega"`
 }
 
+// TableName define el nombre exacto de la tabla en PostgreSQL
 func (t *Mantenimiento) TableName() string {
 	return "mantenimiento"
 }
 
+// init registra el modelo automáticamente en el ORM de Beego
 func init() {
 	orm.RegisterModel(new(Mantenimiento))
 }
 
-// 1. Obtener todos los mantenimientos (GET)
+// GetAllMantenimientos obtiene todos los registros de la tabla mantenimiento
 func GetAllMantenimientos() ([]Mantenimiento, error) {
 	o := orm.NewOrm()
 	var mantenimientos []Mantenimiento
@@ -28,23 +30,25 @@ func GetAllMantenimientos() ([]Mantenimiento, error) {
 	return mantenimientos, err
 }
 
-// 2. Crear un mantenimiento (POST)
+// Create inserta un nuevo registro de mantenimiento
 func (m *Mantenimiento) Create() error {
 	o := orm.NewOrm()
 	_, err := o.Insert(m)
 	return err
 }
 
-// 3. Actualizar un mantenimiento (PUT) - Función Global
-func UpdateMantenimiento(m *Mantenimiento) error {
+// Update actualiza un mantenimiento existente por su ID
+func (m *Mantenimiento) Update(id int) error {
 	o := orm.NewOrm()
-	_, err := o.Update(m)
-	return err
-}
-
-// 4. Eliminar un mantenimiento por ID (DELETE)
-func DeleteMantenimiento(id int) error {
-	o := orm.NewOrm()
-	_, err := o.Delete(&Mantenimiento{ID: id})
-	return err
+	mantenimiento := Mantenimiento{IdMantenimiento: id}
+	if err := o.Read(&mantenimiento); err == nil {
+		mantenimiento.Tipo = m.Tipo
+		mantenimiento.Descripcion = m.Descripcion
+		mantenimiento.Fecha = m.Fecha
+		mantenimiento.IdBodega = m.IdBodega
+		_, err := o.Update(&mantenimiento)
+		return err
+	} else {
+		return err
+	}
 }

@@ -30,6 +30,6 @@ func UpdateMantenimientoService(m *models.Mantenimiento) error {
 // Eliminar un mantenimiento por ID
 func DeleteMantenimientoService(id int) error {
 	o := orm.NewOrm()
-	_, err := o.Delete(&models.Mantenimiento{ID: id})
+	_, err := o.Delete(&models.Mantenimiento{IdMantenimiento: id})
 	return err
 }

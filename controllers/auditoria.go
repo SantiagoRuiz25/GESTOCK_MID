@@ -1,73 +1,108 @@
 package controllers
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
-
-	"GESTOCK_MID/models"
-
-	"github.com/gin-gonic/gin"
+	beego "github.com/beego/beego/v2/server/web"
 )
 
-// Buscar todas las auditorías
-func GetAuditorias(c *gin.Context) {
-	auditorias, err := models.GetAllAuditorias()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, auditorias)
+type AuditoriaController struct {
+	beego.Controller
 }
 
-// Crear una auditoría
-func CreateAuditoria(c *gin.Context) {
-	var auditoria models.Auditoria
-	if err := c.ShouldBindJSON(&auditoria); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+func (c *AuditoriaController) GetAll() {
+	client := &http.Client{}
+	req, errReq := http.NewRequest("GET", "http://localhost:8081/auditorias", nil)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición al CRUD"}
+		c.ServeJSON()
 		return
 	}
-	if err := auditoria.Create(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+		c.ServeJSON()
 		return
 	}
-	c.JSON(http.StatusCreated, auditoria)
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	c.ServeJSON()
 }
 
-// Actualizar una auditoría
-func UpdateAuditoria(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+func (c *AuditoriaController) GetById() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, _ := strconv.Atoi(idStr)
+
+	client := &http.Client{}
+	req, errReq := http.NewRequest("GET", "http://localhost:8081/auditorias/"+strconv.Itoa(id), nil)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición"}
+		c.ServeJSON()
+		return
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el CRUD"}
+		c.ServeJSON()
 		return
 	}
+	defer resp.Body.Close()
 
-	var auditoriaActualizada models.Auditoria
-	if err := c.ShouldBindJSON(&auditoriaActualizada); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	json.Unmarshal(body, &resultado)
 
-	// Llamamos al método Update pasando el ID de los parámetros de la ruta
-	if err := auditoriaActualizada.Update(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "Auditoría actualizada correctamente"})
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	c.ServeJSON()
 }
 
-// Eliminar una auditoría
-func DeleteAuditoria(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+func (c *AuditoriaController) Post() {
+	client := &http.Client{}
+	req, errReq := http.NewRequest(
+		"POST",
+		"http://localhost:8081/auditorias",
+		bytes.NewBuffer(c.Ctx.Input.RequestBody),
+	)
+
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+		c.ServeJSON()
 		return
 	}
 
-	if err := models.DeleteAuditoria(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "No se pudo comunicar con el servidor CRUD"}
+		c.ServeJSON()
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Auditoría eliminada correctamente"})
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	c.ServeJSON()
 }

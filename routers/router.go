@@ -1,34 +1,24 @@
-
 package routers
 
 import (
 	"GESTOCK_MID/controllers"
-
-	"github.com/gin-gonic/gin"
+	beego "github.com/beego/beego/v2/server/web"
 )
 
-func SetupRouter() *gin.Engine {
-	r := gin.Default()
+func init() {
+	// 1. Incidencias
+	beego.Router("/incidencias", &controllers.IncidenciaController{}, "get:GetAll;post:Post")
+	beego.Router("/incidencias/:id", &controllers.IncidenciaController{}, "get:GetById;delete:Delete")
 
-	// Rutas para incidencias
-	r.GET("/incidencias", controllers.GetIncidencias)
-	r.POST("/incidencias", controllers.CreateIncidencia)
+	// 2. Mantenimientos
+	beego.Router("/mantenimientos", &controllers.MantenimientoController{}, "get:GetAll;post:Post")
+	beego.Router("/mantenimientos/:id", &controllers.MantenimientoController{}, "get:GetById")
 
-	// Rutas para auditorías
-	r.GET("/auditorias", controllers.GetAuditorias)
-	r.POST("/auditorias", controllers.CreateAuditoria)
-	r.PUT("/auditorias/:id", controllers.UpdateAuditoria)
-	r.DELETE("/auditorias/:id", controllers.DeleteAuditoria)
+	// 3. Operaciones
+	beego.Router("/operaciones", &controllers.OperacionController{}, "get:GetAll;post:Post")
+	beego.Router("/operaciones/:id", &controllers.OperacionController{}, "get:GetById;put:Put;delete:Delete")
 
-	// Rutas para mantenimientos
-	r.GET("/mantenimientos", controllers.GetMantenimientos)
-	r.POST("/mantenimientos", controllers.CreateMantenimiento)
-	r.PUT("/mantenimientos/:id", controllers.UpdateMantenimiento)
-
-	// Rutas para operaciones
-	r.GET("/operaciones", controllers.GetOperaciones)
-	r.POST("/operaciones", controllers.CreateOperacion)
-	r.DELETE("/operaciones/:id", controllers.DeleteOperacion)
-
-	return r
+	// 4. Auditorías
+	beego.Router("/auditorias", &controllers.AuditoriaController{}, "get:GetAll;post:Post")
+	beego.Router("/auditorias/:id", &controllers.AuditoriaController{}, "get:GetById")
 }
