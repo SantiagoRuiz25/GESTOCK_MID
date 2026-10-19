@@ -14,11 +14,15 @@ func init() {
 	beego.Router("/mantenimientos", &controllers.MantenimientoController{}, "get:GetAll;post:Post")
 	beego.Router("/mantenimientos/:id", &controllers.MantenimientoController{}, "get:GetById")
 
-	// 3. Operaciones
+	// 3. Bodegas
+	beego.Router("/v1/bodegas", &controllers.BodegaController{}, "get:GetAll;post:Post")
+	beego.Router("/v1/bodegas/:id", &controllers.BodegaController{}, "get:GetById;put:Put;delete:Delete")
+
+	// 4. Operaciones
 	beego.Router("/operaciones", &controllers.OperacionController{}, "get:GetAll;post:Post")
 	beego.Router("/operaciones/:id", &controllers.OperacionController{}, "get:GetById;put:Put;delete:Delete")
 
-	// 4. Auditorías
+	// 5. Auditorías
 	beego.Router("/auditorias", &controllers.AuditoriaController{}, "get:GetAll;post:Post")
 	beego.Router("/auditorias/:id", &controllers.AuditoriaController{}, "get:GetById")
 }

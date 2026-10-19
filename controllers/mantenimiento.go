@@ -1,11 +1,12 @@
 package controllers
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
-	"net/http"
 	"strconv"
+
+	"GESTOCK_MID/models"
+
+	"github.com/beego/beego/v2/client/orm"
 	beego "github.com/beego/beego/v2/server/web"
 )
 
@@ -13,96 +14,69 @@ type MantenimientoController struct {
 	beego.Controller
 }
 
+// GetAll: Obtener todos los mantenimientos
 func (c *MantenimientoController) GetAll() {
-	client := &http.Client{}
-	req, errReq := http.NewRequest("GET", "http://localhost:8081/mantenimientos", nil)
-	if errReq != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición al CRUD"}
-		c.ServeJSON()
-		return
-	}
-
-	resp, err := client.Do(req)
+	o := orm.NewOrm()
+	var mantenimientos []models.Mantenimiento
+	_, err := o.QueryTable(new(models.Mantenimiento)).All(&mantenimientos)
 	if err != nil {
 		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error al consultar los mantenimientos"}
 		c.ServeJSON()
 		return
 	}
-	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	var resultado map[string]interface{}
-	json.Unmarshal(body, &resultado)
-
-	c.Ctx.Output.SetStatus(resp.StatusCode)
-	c.Data["json"] = resultado
+	c.Ctx.Output.SetStatus(200)
+	c.Data["json"] = map[string]interface{}{"Success": true, "Data": mantenimientos}
 	c.ServeJSON()
 }
 
+// GetById: Obtener un mantenimiento por ID
 func (c *MantenimientoController) GetById() {
 	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
-
-	client := &http.Client{}
-	req, errReq := http.NewRequest("GET", "http://localhost:8081/mantenimientos/"+strconv.Itoa(id), nil)
-	if errReq != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición"}
-		c.ServeJSON()
-		return
-	}
-
-	resp, err := client.Do(req)
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el CRUD"}
+		c.Ctx.Output.SetStatus(400)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "ID inválido"}
 		c.ServeJSON()
 		return
 	}
-	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	var resultado map[string]interface{}
-	json.Unmarshal(body, &resultado)
+	o := orm.NewOrm()
+	mantenimiento := &models.Mantenimiento{IdMantenimiento: id}
+	err = o.Read(mantenimiento)
+	if err != nil {
+		c.Ctx.Output.SetStatus(404)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Mantenimiento no encontrado"}
+		c.ServeJSON()
+		return
+	}
 
-	c.Ctx.Output.SetStatus(resp.StatusCode)
-	c.Data["json"] = resultado
+	c.Ctx.Output.SetStatus(200)
+	c.Data["json"] = map[string]interface{}{"Success": true, "Data": mantenimiento}
 	c.ServeJSON()
 }
 
+// Post: Crear un nuevo mantenimiento
 func (c *MantenimientoController) Post() {
-	client := &http.Client{}
-	req, errReq := http.NewRequest(
-		"POST",
-		"http://localhost:8081/mantenimientos",
-		bytes.NewBuffer(c.Ctx.Input.RequestBody),
-	)
-
-	if errReq != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+	var mantenimiento models.Mantenimiento
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &mantenimiento); err != nil {
+		c.Ctx.Output.SetStatus(400)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "El formato del JSON recibido es inválido"}
 		c.ServeJSON()
 		return
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := client.Do(req)
+	o := orm.NewOrm()
+	_, err := o.Insert(&mantenimiento)
 	if err != nil {
 		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "No se pudo comunicar con el servidor CRUD"}
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error al registrar el mantenimiento"}
 		c.ServeJSON()
 		return
 	}
-	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	var resultado map[string]interface{}
-	json.Unmarshal(body, &resultado)
-
-	c.Ctx.Output.SetStatus(resp.StatusCode)
-	c.Data["json"] = resultado
+	c.Ctx.Output.SetStatus(201)
+	c.Data["json"] = map[string]interface{}{"Success": true, "Data": mantenimiento}
 	c.ServeJSON()
 }
