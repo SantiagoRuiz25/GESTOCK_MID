@@ -1,111 +1,72 @@
 package services
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
-	"net/http"
-	"time"
-
 	"GESTOCK_MID/models"
+
+	"github.com/beego/beego/v2/client/orm"
 )
-
-const urlBackendProductos = "http://localhost:8081/v1/producto"
-
-var httpClient = &http.Client{Timeout: 15 * time.Second}
 
 // 1. Obtener todos los productos
 func ObtenerTodosProductos() ([]models.Producto, error) {
-	resp, err := httpClient.Get(urlBackendProductos)
+	o := orm.NewOrm()
+	var productos []models.Producto
+	_, err := o.QueryTable(new(models.Producto)).All(&productos)
 	if err != nil {
-		return nil, errors.New("error de conexión con el servicio CRUD backend (puerto 8081)")
+		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 404 {
-		return nil, errors.New("recurso no encontrado en el sistema")
-	}
-
-	var lista []models.Producto
-	json.NewDecoder(resp.Body).Decode(&lista)
-	return lista, nil
+	return productos, nil
 }
 
 // 2. Obtener producto por ID
 func ObtenerProductoPorId(id int) (*models.Producto, error) {
-	resp, err := httpClient.Get(urlBackendProductos + "/" + time.Now().Format("0")) // Ajusta según la URL de tu backend para ID
-	// O usando strconv.Itoa(id):
-	// resp, err := httpClient.Get(urlBackendProductos + "/" + strconv.Itoa(id))
+	o := orm.NewOrm()
+	producto := &models.Producto{ID: id}
+	err := o.Read(producto)
 	if err != nil {
-		return nil, errors.New("error de conexión con el servicio CRUD backend (puerto 8081)")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 404 {
 		return nil, errors.New("recurso no encontrado en el sistema")
 	}
+	return producto, nil
+}
 
+// 3. Crear un nuevo producto (recibe el JSON crudo del RequestBody)
+func CrearProducto(body []byte) (int64, error) {
 	var producto models.Producto
-	json.NewDecoder(resp.Body).Decode(&producto)
-	return &producto, nil
-}
+	if err := json.Unmarshal(body, &producto); err != nil {
+		return 0, errors.New("el formato del JSON recibido es inválido")
+	}
 
-// 3. Crear producto (Recibe el RequestBody del controlador)
-func CrearProducto(body []byte) (*models.Producto, error) {
-	resp, err := httpClient.Post(urlBackendProductos, "application/json", bytes.NewBuffer(body))
+	o := orm.NewOrm()
+	id, err := o.Insert(&producto)
 	if err != nil {
-		return nil, errors.New("error de conexión con el servicio CRUD backend (puerto 8081)")
+		return 0, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return nil, errors.New("el backend respondió con un error")
-	}
-
-	var productoCreado models.Producto
-	json.NewDecoder(resp.Body).Decode(&productoCreado)
-	return &productoCreado, nil
+	return id, nil
 }
 
-// 4. Actualizar producto
+// 4. Actualizar un producto (recibe ID y el JSON crudo del RequestBody)
 func ActualizarProducto(id int, body []byte) error {
-	req, err := http.NewRequest(http.MethodPut, urlBackendProductos+"/"+time.Now().Format("0"), bytes.NewBuffer(body))
-	// O usando strconv.Itoa(id) para la URL:
-	// req, err := http.NewRequest(http.MethodPut, urlBackendProductos+"/"+strconv.Itoa(id), bytes.NewBuffer(body))
-	if err != nil {
-		return errors.New("error al crear la petición de actualización")
+	var producto models.Producto
+	if err := json.Unmarshal(body, &producto); err != nil {
+		return errors.New("el formato del JSON recibido es inválido")
 	}
-	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := httpClient.Do(req)
+	producto.ID = id
+	o := orm.NewOrm()
+	_, err := o.Update(&producto)
 	if err != nil {
-		return errors.New("error de conexión con el servicio CRUD backend (puerto 8081)")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return errors.New("el backend respondió con un error al actualizar")
+		return err
 	}
 	return nil
 }
 
-// 5. Eliminar producto
+// 5. Eliminar un producto por ID
 func EliminarProducto(id int) error {
-	req, err := http.NewRequest(http.MethodDelete, urlBackendProductos+"/"+time.Now().Format("0"), nil)
-	// O usando strconv.Itoa(id):
-	// req, err := http.NewRequest(http.MethodDelete, urlBackendProductos+"/"+strconv.Itoa(id), nil)
+	o := orm.NewOrm()
+	_, err := o.Delete(&models.Producto{ID: id})
 	if err != nil {
-		return errors.New("error al crear la petición de eliminación")
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return errors.New("error de conexión con el servicio CRUD backend (puerto 8081)")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return errors.New("el backend respondió con un error al eliminar")
+		return err
 	}
 	return nil
 }

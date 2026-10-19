@@ -1,8 +1,7 @@
 package models
 
 type Bodegas struct {
-	ID               int    `json:"id_bodega"`
-	Id_Usuario       int    `json:"id_usuario"` // <-- ¡Asegúrate de agregar esta línea!
+	Id_Usuario       int    `json:"id_usuario"` 
 	Nombre           string `json:"nombre"`
 	Codigo           int    `json:"codigo"`
 	Direccion        string `json:"direccion"`
