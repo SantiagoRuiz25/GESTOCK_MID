@@ -1,11 +1,11 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
+	"net/http"
 	"strconv"
-
-	"GESTOCK_MID/models"
-
 	beego "github.com/beego/beego/v2/server/web"
 )
 
@@ -13,238 +13,96 @@ type AuditoriaController struct {
 	beego.Controller
 }
 
-// 1. GET ALL: Consultar todas las auditorías
 func (c *AuditoriaController) GetAll() {
-	auditorias, err := models.GetAllAuditorias()
-	if err != nil {
+	client := &http.Client{}
+	req, errReq := http.NewRequest("GET", "http://localhost:8081/auditorias", nil)
+	if errReq != nil {
 		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al obtener los registros de auditoría",
-		}
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición al CRUD"}
 		c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Lista de auditorías obtenida con éxito",
-		"Data":    auditorias,
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+		c.ServeJSON()
+		return
 	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
 	c.ServeJSON()
 }
 
-// 2. GET BY ID: Consultar una auditoría por ID
 func (c *AuditoriaController) GetById() {
-	idParam := c.Ctx.Input.Param(":id")
+	idStr := c.Ctx.Input.Param(":id")
+	id, _ := strconv.Atoi(idStr)
 
-	if idParam == "" {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El ID es requerido",
-		}
+	client := &http.Client{}
+	req, errReq := http.NewRequest("GET", "http://localhost:8081/auditorias/"+strconv.Itoa(id), nil)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición"}
 		c.ServeJSON()
 		return
 	}
 
-	id, err := strconv.Atoi(idParam)
-	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es invalido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Consultar la auditoría por ID a través del modelo
-	auditorias, err := models.GetAllAuditorias()
+	resp, err := client.Do(req)
 	if err != nil {
 		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al consultar la auditoría",
-		}
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el CRUD"}
 		c.ServeJSON()
 		return
 	}
+	defer resp.Body.Close()
 
-	var auditoriaEncontrada *models.Auditoria
-	for _, item := range auditorias {
-		if item.IdAuditoria == id {
-			auditoriaEncontrada = &item
-			break
-		}
-	}
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	json.Unmarshal(body, &resultado)
 
-	if auditoriaEncontrada == nil {
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  404,
-			"Message": "No se encontró el registro de auditoría solicitado",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Auditoría obtenida con éxito",
-		"Data":    auditoriaEncontrada,
-	}
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
 	c.ServeJSON()
 }
 
-// 3. POST: Crear registro de auditoría
 func (c *AuditoriaController) Post() {
-	var nuevaAuditoria models.Auditoria
+	client := &http.Client{}
+	req, errReq := http.NewRequest(
+		"POST",
+		"http://localhost:8081/auditorias",
+		bytes.NewBuffer(c.Ctx.Input.RequestBody),
+	)
 
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &nuevaAuditoria); err != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El formato del JSON recibido es invalido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	if err := nuevaAuditoria.Create(); err != nil {
+	if errReq != nil {
 		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al guardar el registro de auditoría",
-		}
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
 		c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(201)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  201,
-		"Message": "Auditoría creada exitosamente",
-		"Data":    nuevaAuditoria,
-	}
-	c.ServeJSON()
-}
+	req.Header.Set("Content-Type", "application/json")
 
-// 4. PUT: Actualizar auditoría por ID
-func (c *AuditoriaController) Put() {
-	idParam := c.Ctx.Input.Param(":id")
-
-	if idParam == "" {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El ID es requerido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	id, err := strconv.Atoi(idParam)
-	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es invalido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	var auditoriaActualizada models.Auditoria
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &auditoriaActualizada); err != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El formato del JSON recibido es invalido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	if err := auditoriaActualizada.Update(id); err != nil {
+	resp, err := client.Do(req)
+	if err != nil {
 		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al actualizar la auditoría",
-		}
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "No se pudo comunicar con el servidor CRUD"}
 		c.ServeJSON()
 		return
 	}
+	defer resp.Body.Close()
 
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Auditoría actualizada correctamente",
-		"Data":    auditoriaActualizada,
-	}
-	c.ServeJSON()
-}
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	json.Unmarshal(body, &resultado)
 
-// 5. DELETE: Eliminar auditoría por ID
-func (c *AuditoriaController) Delete() {
-	idParam := c.Ctx.Input.Param(":id")
-
-	if idParam == "" {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El ID es requerido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	id, err := strconv.Atoi(idParam)
-	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es invalido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	if err := models.DeleteAuditoria(id); err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al eliminar el registro de auditoría",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Auditoría eliminada correctamente",
-	}
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
 	c.ServeJSON()
 }

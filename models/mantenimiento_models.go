@@ -1,54 +1,54 @@
 package models
 
 import (
-	"GESTOCK_MID/db"
+	"github.com/beego/beego/v2/client/orm"
 )
 
 type Mantenimiento struct {
-	ID              int    `json:"id"`
-	EquipoID        int    `json:"equipo_id"`
-	Tipo            string `json:"tipo"`
-	Detalles        string `json:"detalles"`
-	FechaProgramada string `json:"fecha_programada"`
+	IdMantenimiento int    `orm:"column(id_mantenimiento);pk;auto" json:"id_mantenimiento"`
+	Tipo            string `orm:"column(tipo)" json:"tipo"`
+	Descripcion     string `orm:"column(descripcion)" json:"descripcion"`
+	Fecha           string `orm:"column(fecha)" json:"fecha"`
+	IdBodega        int    `orm:"column(id_bodega)" json:"id_bodega"`
 }
 
-// 1. Obtener todos los mantenimientos
+// TableName define el nombre exacto de la tabla en PostgreSQL
+func (t *Mantenimiento) TableName() string {
+	return "mantenimiento"
+}
+
+// init registra el modelo automáticamente en el ORM de Beego
+func init() {
+	orm.RegisterModel(new(Mantenimiento))
+}
+
+// GetAllMantenimientos obtiene todos los registros de la tabla mantenimiento
 func GetAllMantenimientos() ([]Mantenimiento, error) {
-	// Corregido: id_mantenimiento en lugar de id
-	rows, err := db.DB.Query("SELECT id_mantenimiento, equipo_id, tipo, detalles, fecha_programada FROM mantenimiento")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
+	o := orm.NewOrm()
 	var mantenimientos []Mantenimiento
-	for rows.Next() {
-		var m Mantenimiento
-		err := rows.Scan(&m.ID, &m.EquipoID, &m.Tipo, &m.Detalles, &m.FechaProgramada)
-		if err != nil {
-			return nil, err
-		}
-		mantenimientos = append(mantenimientos, m)
-	}
-	return mantenimientos, nil
+	_, err := o.QueryTable(new(Mantenimiento)).All(&mantenimientos)
+	return mantenimientos, err
 }
 
-// 2. Crear un mantenimiento
+// Create inserta un nuevo registro de mantenimiento
 func (m *Mantenimiento) Create() error {
-	query := "INSERT INTO mantenimiento (equipo_id, tipo, detalles, fecha_programada) VALUES ($1, $2, $3, $4) RETURNING id_mantenimiento"
-	return db.DB.QueryRow(query, m.EquipoID, m.Tipo, m.Detalles, m.FechaProgramada).Scan(&m.ID)
-}
-
-// 3. Actualizar un mantenimiento
-func UpdateMantenimiento(m *Mantenimiento) error {
-	query := "UPDATE mantenimiento SET equipo_id = $1, tipo = $2, detalles = $3, fecha_programada = $4 WHERE id_mantenimiento = $5"
-	_, err := db.DB.Exec(query, m.EquipoID, m.Tipo, m.Detalles, m.FechaProgramada, m.ID)
+	o := orm.NewOrm()
+	_, err := o.Insert(m)
 	return err
 }
 
-// 4. Eliminar un mantenimiento por ID
-func DeleteMantenimiento(id int) error {
-	query := "DELETE FROM mantenimiento WHERE id_mantenimiento = $1"
-	_, err := db.DB.Exec(query, id)
-	return err
+// Update actualiza un mantenimiento existente por su ID
+func (m *Mantenimiento) Update(id int) error {
+	o := orm.NewOrm()
+	mantenimiento := Mantenimiento{IdMantenimiento: id}
+	if err := o.Read(&mantenimiento); err == nil {
+		mantenimiento.Tipo = m.Tipo
+		mantenimiento.Descripcion = m.Descripcion
+		mantenimiento.Fecha = m.Fecha
+		mantenimiento.IdBodega = m.IdBodega
+		_, err := o.Update(&mantenimiento)
+		return err
+	} else {
+		return err
+	}
 }
