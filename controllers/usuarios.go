@@ -23,7 +23,7 @@ type UsuariosController struct {
 const crudUsuarioURL = "http://localhost:8081/v1/usuarios"
 const crudSesionURL = "http://localhost:8081/v1/sesiones"
 
-// ==========================================
+// =================
 // 1. GET ALL: Obtener todos los usuarios
 // ==========================================
 func (c *UsuariosController) GetAll() {
