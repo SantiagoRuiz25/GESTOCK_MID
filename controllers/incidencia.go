@@ -1,34 +1,82 @@
 package controllers
 
 import (
+	"encoding/json"
 	"net/http"
+	"strconv"
+
 	"GESTOCK_MID/models"
-	"github.com/gin-gonic/gin"
+
+	beego "github.com/beego/beego/v2/server/web"
 )
 
-// Obtener todas las incidencias
-func GetIncidencias(c *gin.Context) {
-	incidencias, err := models.GetAllIncidencias()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener las incidencias"})
-		return
-	}
-	c.JSON(http.StatusOK, incidencias)
+type IncidenciaController struct {
+	beego.Controller
 }
 
-// Crear una incidencia
-func CreateIncidencia(c *gin.Context) {
-	var incidencia models.Incidencia
-	
-	if err := c.ShouldBindJSON(&incidencia); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error al parsear la incidencia"})
+func (c *IncidenciaController) GetAll() {
+	incidencias, err := models.GetAllIncidencias()
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]string{"error": err.Error()}
+		c.ServeJSON()
 		return
 	}
 
-	if err := incidencia.Create(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al crear la incidencia"})
+	c.Ctx.Output.SetStatus(http.StatusOK)
+	c.Data["json"] = incidencias
+	c.ServeJSON()
+}
+
+func (c *IncidenciaController) GetById() {
+	idParam := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil || id <= 0 {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]string{"error": "ID de incidencia inválido"}
+		c.ServeJSON()
 		return
 	}
-	
-	c.JSON(http.StatusCreated, incidencia)
+
+	incidencias, err := models.GetAllIncidencias()
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]string{"error": err.Error()}
+		c.ServeJSON()
+		return
+	}
+
+	for _, inc := range incidencias {
+		if inc.IdIncidencia == id {
+			c.Ctx.Output.SetStatus(http.StatusOK)
+			c.Data["json"] = inc
+			c.ServeJSON()
+			return
+		}
+	}
+
+	c.Ctx.Output.SetStatus(http.StatusNotFound)
+	c.Data["json"] = map[string]string{"error": "Incidencia no encontrada"}
+	c.ServeJSON()
+}
+
+func (c *IncidenciaController) Post() {
+	var nuevaIncidencia models.Incidencia
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &nuevaIncidencia); err != nil {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]string{"error": err.Error()}
+		c.ServeJSON()
+		return
+	}
+
+	if err := nuevaIncidencia.Create(); err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]string{"error": err.Error()}
+		c.ServeJSON()
+		return
+	}
+
+	c.Ctx.Output.SetStatus(http.StatusCreated)
+	c.Data["json"] = nuevaIncidencia
+	c.ServeJSON()
 }

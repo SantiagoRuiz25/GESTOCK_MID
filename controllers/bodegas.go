@@ -1,7 +1,13 @@
 package controllers
 
+import "database/sql"
+
+import "strings"
+import "github.com/lib/pq"
+
+import "log"
+
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -15,308 +21,192 @@ type BodegasController struct {
 	beego.Controller
 }
 
-// 1. GET ALL: Consultar todas las bodegas
+func (c *BodegasController) parseID() (int, bool) {
+	rawID := c.Ctx.Input.Param(":id")
+	if rawID == "" {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusBadRequest,
+			"Message": "El ID es requerido",
+		}
+		_ = c.ServeJSON()
+		return 0, false
+	}
+
+	id, err := strconv.Atoi(rawID)
+	if err != nil || id <= 0 {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusBadRequest,
+			"Message": "El ID ingresado es inválido",
+		}
+		_ = c.ServeJSON()
+		return 0, false
+	}
+
+	return id, true
+}
+
 func (c *BodegasController) GetAll() {
-	respuesta, errCrud := http.Get("http://localhost:8080/v1/bodega")
-	if errCrud != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-	defer respuesta.Body.Close()
-
-	if respuesta.StatusCode == 404 {
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  404,
-			"Message": "No se encontraron bodegas registradas",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	var listaBodegas []models.Bodegas
-	json.NewDecoder(respuesta.Body).Decode(&listaBodegas)
-
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Lista de bodegas obtenida con éxito",
-		"Data":    listaBodegas,
-	}
-	c.ServeJSON()
-}
-
-// 2. GET BY ID: Consultar una bodega por ID
-func (c *BodegasController) GetById() {
-	idBodega := c.Ctx.Input.Param(":id")
-
-	if idBodega == "" {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El ID es requerido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	id, err := strconv.Atoi(idBodega)
-	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es invalido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	respuesta, errCrud := http.Get("http://localhost:8080/v1/bodega/" + strconv.Itoa(id))
-	if errCrud != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-	defer respuesta.Body.Close()
-
-	if respuesta.StatusCode == 404 {
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  404,
-			"Message": "La bodega solicitada no existe",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	var bodega models.Bodegas
-	json.NewDecoder(respuesta.Body).Decode(&bodega)
-
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Bodega obtenida con éxito",
-		"Data":    bodega,
-	}
-	c.ServeJSON()
-}
-
-// 3. POST: Crear nueva bodega
-func (c *BodegasController) Post() {
-	var nuevaBodega models.Bodegas
-
-	err := json.Unmarshal(c.Ctx.Input.RequestBody, &nuevaBodega)
+	bodegas, err := models.ListarBodegas(c.Ctx.Request.Context())
 	if err != nil {
-		c.Ctx.Output.SetStatus(400)
+		log.Printf("Error al consultar bodegas: %v", err)
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
-			"Message": "El formato del JSON recibido es invalido",
+			"Status":  http.StatusInternalServerError,
+			"Message": "No se pudieron consultar las bodegas",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
-	if nuevaBodega.Nombre == "" || nuevaBodega.Codigo <= 0 {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Campos obligatorios incompletos",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	respuesta, errCrud := http.Post(
-		"http://localhost:8081/v1/bodega",
-		"application/json",
-		bytes.NewBuffer(c.Ctx.Input.RequestBody),
-	)
-	if errCrud != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-	defer respuesta.Body.Close()
-
-	var bodegaGuardada models.Bodegas
-	json.NewDecoder(respuesta.Body).Decode(&bodegaGuardada)
-
-	c.Ctx.Output.SetStatus(201)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  201,
-		"Message": "Bodega creada exitosamente",
-		"Data":    bodegaGuardada,
+		"Status":  http.StatusOK,
+		"Message": "Lista de bodegas obtenida con éxito",
+		"Data":    bodegas,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// 4. PUT: Actualizar bodega por ID
+func (c *BodegasController) GetById() {
+	id, ok := c.parseID()
+	if !ok {
+		return
+	}
+	if id > 2147483647 {
+		c.responderBodega(http.StatusBadRequest, "El ID ingresado es inválido", nil)
+		return
+	}
+
+	bodega, err := models.BuscarBodegaPorID(c.Ctx.Request.Context(), id)
+	switch {
+	case err == sql.ErrNoRows:
+		c.responderBodega(http.StatusNotFound, "La bodega solicitada no existe", nil)
+	case err != nil:
+		log.Printf("Error al consultar bodega %d: %v", id, err)
+		c.responderBodega(http.StatusInternalServerError, "No se pudo consultar la bodega", nil)
+	default:
+		c.responderBodega(http.StatusOK, "Bodega obtenida con éxito", &bodega)
+	}
+}
+
+func (c *BodegasController) Post() {
+	var bodega models.BodegaPostgres
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &bodega); err != nil {
+		c.responderBodega(http.StatusBadRequest, "El JSON recibido es inválido", nil)
+		return
+	}
+
+	for _, campo := range []*string{
+		&bodega.Codigo, &bodega.Nombre, &bodega.Direccion,
+		&bodega.Ciudad, &bodega.Telefono, &bodega.Responsable,
+	} {
+		*campo = strings.TrimSpace(*campo)
+		if *campo == "" {
+			c.responderBodega(http.StatusBadRequest, "Completa los campos obligatorios de la bodega", nil)
+			return
+		}
+	}
+	if bodega.Capacidad <= 0 || bodega.Capacidad > 2147483647 {
+		c.responderBodega(http.StatusBadRequest, "La capacidad máxima está fuera del rango admitido", nil)
+		return
+	}
+
+	err := models.CrearBodega(c.Ctx.Request.Context(), &bodega)
+	switch fallo, esErrorPG := err.(*pq.Error); {
+	case err == nil:
+		c.responderBodega(http.StatusCreated, "Bodega creada con éxito", &bodega)
+	case esErrorPG && fallo.Code == "23505":
+		c.responderBodega(http.StatusConflict, "Ya existe una bodega con ese código", nil)
+	default:
+		log.Printf("Error al crear bodega: %v", err)
+		c.responderBodega(http.StatusInternalServerError, "No se pudo guardar la bodega", nil)
+	}
+}
+
+func (c *BodegasController) responderBodega(estado int, mensaje string, bodega *models.BodegaPostgres) {
+	respuesta := map[string]interface{}{
+		"Success": estado >= 200 && estado < 300,
+		"Status":  estado,
+		"Message": mensaje,
+	}
+	if bodega != nil {
+		respuesta["Data"] = bodega
+	}
+
+	c.Ctx.Output.SetStatus(estado)
+	c.Data["json"] = respuesta
+	_ = c.ServeJSON()
+}
+
 func (c *BodegasController) Put() {
-	idBodega := c.Ctx.Input.Param(":id")
-
-	if idBodega == "" {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El ID es requerido",
-		}
-		c.ServeJSON()
+	id, ok := c.parseID()
+	if !ok {
+		return
+	}
+	if id > 2147483647 {
+		c.responderBodega(http.StatusBadRequest, "El ID ingresado es inválido", nil)
 		return
 	}
 
-	id, err := strconv.Atoi(idBodega)
-	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es invalido",
+	var bodega models.BodegaPostgres
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &bodega); err != nil {
+		c.responderBodega(http.StatusBadRequest, "El JSON recibido es inválido", nil)
+		return
+	}
+	bodega.ID = id
+
+	for _, campo := range []*string{
+		&bodega.Codigo, &bodega.Nombre, &bodega.Direccion,
+		&bodega.Ciudad, &bodega.Telefono, &bodega.Responsable,
+	} {
+		*campo = strings.TrimSpace(*campo)
+		if *campo == "" {
+			c.responderBodega(http.StatusBadRequest, "Completa los campos obligatorios de la bodega", nil)
+			return
 		}
-		c.ServeJSON()
+	}
+	if bodega.Capacidad <= 0 || bodega.Capacidad > 2147483647 {
+		c.responderBodega(http.StatusBadRequest, "La capacidad máxima está fuera del rango admitido", nil)
 		return
 	}
 
-	var bodegaActualizada models.Bodegas
-	errParse := json.Unmarshal(c.Ctx.Input.RequestBody, &bodegaActualizada)
-	if errParse != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El formato del JSON recibido es invalido",
-		}
-		c.ServeJSON()
-		return
+	err := models.ActualizarBodega(c.Ctx.Request.Context(), &bodega)
+	switch fallo, esErrorPG := err.(*pq.Error); {
+	case err == nil:
+		c.responderBodega(http.StatusOK, "Bodega actualizada con éxito", &bodega)
+	case err == sql.ErrNoRows:
+		c.responderBodega(http.StatusNotFound, "La bodega solicitada no existe", nil)
+	case esErrorPG && fallo.Code == "23505":
+		c.responderBodega(http.StatusConflict, "Ya existe una bodega con ese código", nil)
+	default:
+		log.Printf("Error al actualizar bodega %d: %v", id, err)
+		c.responderBodega(http.StatusInternalServerError, "No se pudo actualizar la bodega", nil)
 	}
-
-	client := &http.Client{}
-	req, errReq := http.NewRequest(
-		"PUT",
-		"http://localhost:8080/v1/bodega/"+strconv.Itoa(id),
-		bytes.NewBuffer(c.Ctx.Input.RequestBody),
-	)
-	if errReq != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	respuesta, errCrud := client.Do(req)
-	if errCrud != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-	defer respuesta.Body.Close()
-
-	var bodegaRespuesta models.Bodegas
-	json.NewDecoder(respuesta.Body).Decode(&bodegaRespuesta)
-
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Bodega actualizada exitosamente",
-		"Data":    bodegaRespuesta,
-	}
-	c.ServeJSON()
 }
 
-// 5. DELETE: Eliminar bodega por ID
 func (c *BodegasController) Delete() {
-	idBodega := c.Ctx.Input.Param(":id")
-
-	if idBodega == "" {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El ID es requerido",
-		}
-		c.ServeJSON()
+	id, ok := c.parseID()
+	if !ok {
+		return
+	}
+	if id > 2147483647 {
+		c.responderBodega(http.StatusBadRequest, "El ID ingresado es inválido", nil)
 		return
 	}
 
-	id, err := strconv.Atoi(idBodega)
-	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es invalido",
-		}
-		c.ServeJSON()
-		return
+	err := models.DesactivarBodega(c.Ctx.Request.Context(), id)
+	switch {
+	case err == sql.ErrNoRows:
+		c.responderBodega(http.StatusNotFound, "No existe una bodega activa con ese ID", nil)
+	case err != nil:
+		log.Printf("Error al desactivar bodega %d: %v", id, err)
+		c.responderBodega(http.StatusInternalServerError, "No se pudo desactivar la bodega", nil)
+	default:
+		c.responderBodega(http.StatusOK, "Bodega desactivada con éxito", nil)
 	}
-
-	client := &http.Client{}
-	req, errReq := http.NewRequest("DELETE", "http://localhost:8080/v1/bodega/"+strconv.Itoa(id), nil)
-	if errReq != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	respuesta, errCrud := client.Do(req)
-	if errCrud != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-	defer respuesta.Body.Close()
-
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Bodega eliminada correctamente",
-	}
-	c.ServeJSON()
 }

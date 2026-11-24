@@ -13,6 +13,39 @@ type CategoriasController struct {
 	web.Controller
 }
 
+func (c *CategoriasController) GetAll() {
+	respuesta, errCrud := http.Get("http://localhost:8081/v1/categoria")
+	if errCrud != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error de conexión con la base de datos o servicio CRUD",
+		}
+		c.ServeJSON()
+		return
+	}
+	defer respuesta.Body.Close()
+
+	var categorias []models.Categoria
+	if err := json.NewDecoder(respuesta.Body).Decode(&categorias); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta de categorías",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Categorías obtenidas con éxito",
+		"Data":    categorias,
+	}
+	c.ServeJSON()
+}
+
 func (c *CategoriasController) GetById() {
 	idCategoria := c.Ctx.Input.Param(":id")
 

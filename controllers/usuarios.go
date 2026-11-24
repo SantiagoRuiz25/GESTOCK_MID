@@ -130,3 +130,24 @@ func (c *UsuariosController) Logout() {
 	c.Data["json"] = map[string]interface{}{"Success": true, "Message": "Sesión cerrada"}
 	_ = c.ServeJSON()
 }
+
+func (c *UsuariosController) GetById() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "ID inválido"}
+		_ = c.ServeJSON()
+		return
+	}
+
+	for _, u := range listaUsuarios {
+		if u.ID == id {
+			c.Data["json"] = map[string]interface{}{"Success": true, "Data": u}
+			_ = c.ServeJSON()
+			return
+		}
+	}
+
+	c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Usuario no encontrado"}
+	_ = c.ServeJSON()
+}
