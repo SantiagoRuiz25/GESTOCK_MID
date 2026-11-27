@@ -1,106 +1,201 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 
-	"GESTOCK_MID/models"
-
 	beego "github.com/beego/beego/v2/server/web"
 )
+
+const crudOperacionURL = "http://localhost:8081/operaciones"
 
 type OperacionController struct {
 	beego.Controller
 }
 
+// GetAll consulta todas las operaciones en el servicio CRUD (puerto 8081).
 func (c *OperacionController) GetAll() {
-	operaciones, err := models.GetAllOperaciones()
-	if err != nil {
+	client := &http.Client{}
+	req, errReq := http.NewRequest(http.MethodGet, crudOperacionURL, nil)
+	if errReq != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": err.Error()}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición al CRUD"}
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(http.StatusOK)
-	c.Data["json"] = operaciones
-	c.ServeJSON()
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+		_ = c.ServeJSON()
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	_ = json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
 }
 
+// GetById consulta una operación por ID en el servicio CRUD (puerto 8081).
 func (c *OperacionController) GetById() {
-	id := c.Ctx.Input.Param(":id")
-	intId, err := strconv.Atoi(id)
-	if err != nil {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]string{"error": "Invalid operation ID"}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "ID de operación inválido"}
+		_ = c.ServeJSON()
 		return
 	}
 
-	// Si tienes models.GetOperacionById(intId), reemplaza esto por:
-	// operacion, err := models.GetOperacionById(intId)
-	operaciones, err := models.GetAllOperaciones()
+	client := &http.Client{}
+	req, errReq := http.NewRequest(http.MethodGet, crudOperacionURL+"/"+strconv.Itoa(id), nil)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición"}
+		_ = c.ServeJSON()
+		return
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": err.Error()}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el CRUD"}
+		_ = c.ServeJSON()
 		return
 	}
+	defer resp.Body.Close()
 
-	for _, op := range operaciones {
-		if op.IdOperacion == intId {
-			c.Ctx.Output.SetStatus(http.StatusOK)
-			c.Data["json"] = op
-			c.ServeJSON()
-			return
-		}
-	}
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	_ = json.Unmarshal(body, &resultado)
 
-	c.Ctx.Output.SetStatus(http.StatusNotFound)
-	c.Data["json"] = map[string]string{"error": "Operation not found"}
-	c.ServeJSON()
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
 }
 
+// Post reenvía la creación de una operación al servicio CRUD (puerto 8081).
 func (c *OperacionController) Post() {
-	var nuevaOperacion models.Operacion
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &nuevaOperacion); err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]string{"error": err.Error()}
-		c.ServeJSON()
-		return
-	}
-
-	if err := models.CreateOperacion(&nuevaOperacion); err != nil {
+	client := &http.Client{}
+	req, errReq := http.NewRequest(
+		http.MethodPost,
+		crudOperacionURL,
+		bytes.NewBuffer(c.Ctx.Input.RequestBody),
+	)
+	if errReq != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": err.Error()}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(http.StatusCreated)
-	c.Data["json"] = nuevaOperacion
-	c.ServeJSON()
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "No se pudo comunicar con el servidor CRUD"}
+		_ = c.ServeJSON()
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	_ = json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
 }
 
-func (c *OperacionController) Delete() {
-	id := c.Ctx.Input.Param(":id")
-	intId, err := strconv.Atoi(id)
-	if err != nil {
+// Put reenvía la actualización de una operación por ID al servicio CRUD (puerto 8081).
+func (c *OperacionController) Put() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]string{"error": "Invalid operation ID"}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "ID de operación inválido"}
+		_ = c.ServeJSON()
 		return
 	}
 
-	if err := models.DeleteOperacion(intId); err != nil {
+	client := &http.Client{}
+	req, errReq := http.NewRequest(
+		http.MethodPut,
+		crudOperacionURL+"/"+strconv.Itoa(id),
+		bytes.NewBuffer(c.Ctx.Input.RequestBody),
+	)
+	if errReq != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": err.Error()}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(http.StatusOK)
-	c.Data["json"] = map[string]string{"message": "Operation deleted successfully"}
-	c.ServeJSON()
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "No se pudo comunicar con el servidor CRUD"}
+		_ = c.ServeJSON()
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	_ = json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
+}
+
+// Delete elimina una operación por ID en el servicio CRUD (puerto 8081).
+func (c *OperacionController) Delete() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "ID de operación inválido"}
+		_ = c.ServeJSON()
+		return
+	}
+
+	client := &http.Client{}
+	req, errReq := http.NewRequest(http.MethodDelete, crudOperacionURL+"/"+strconv.Itoa(id), nil)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error en la petición"}
+		_ = c.ServeJSON()
+		return
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el CRUD"}
+		_ = c.ServeJSON()
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	_ = json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
 }

@@ -1,82 +1,209 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 
-	"GESTOCK_MID/models"
-
 	beego "github.com/beego/beego/v2/server/web"
 )
+
+const crudIncidenciaURL = "http://localhost:8081/incidencias"
 
 type IncidenciaController struct {
 	beego.Controller
 }
 
+// GetAll consulta todas las incidencias desde el servicio CRUD (puerto 8081).
 func (c *IncidenciaController) GetAll() {
-	incidencias, err := models.GetAllIncidencias()
-	if err != nil {
+	client := &http.Client{}
+	req, errReq := http.NewRequest(http.MethodGet, crudIncidenciaURL, nil)
+	if errReq != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": err.Error()}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición al CRUD"}
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(http.StatusOK)
-	c.Data["json"] = incidencias
-	c.ServeJSON()
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el servicio CRUD"}
+		_ = c.ServeJSON()
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	_ = json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
 }
 
+// GetById consulta una incidencia por ID en el servicio CRUD (puerto 8081).
 func (c *IncidenciaController) GetById() {
-	idParam := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idParam)
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]string{"error": "ID de incidencia inválido"}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "ID de incidencia inválido"}
+		_ = c.ServeJSON()
 		return
 	}
 
-	incidencias, err := models.GetAllIncidencias()
+	client := &http.Client{}
+	req, errReq := http.NewRequest(http.MethodGet, crudIncidenciaURL+"/"+strconv.Itoa(id), nil)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición"}
+		_ = c.ServeJSON()
+		return
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": err.Error()}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el CRUD"}
+		_ = c.ServeJSON()
 		return
 	}
+	defer resp.Body.Close()
 
-	for _, inc := range incidencias {
-		if inc.IdIncidencia == id {
-			c.Ctx.Output.SetStatus(http.StatusOK)
-			c.Data["json"] = inc
-			c.ServeJSON()
-			return
-		}
-	}
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	_ = json.Unmarshal(body, &resultado)
 
-	c.Ctx.Output.SetStatus(http.StatusNotFound)
-	c.Data["json"] = map[string]string{"error": "Incidencia no encontrada"}
-	c.ServeJSON()
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
 }
 
+// Post reenvía la creación de una incidencia al servicio CRUD (puerto 8081).
 func (c *IncidenciaController) Post() {
-	var nuevaIncidencia models.Incidencia
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &nuevaIncidencia); err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]string{"error": err.Error()}
-		c.ServeJSON()
-		return
-	}
-
-	if err := nuevaIncidencia.Create(); err != nil {
+	client := &http.Client{}
+	req, errReq := http.NewRequest(
+		http.MethodPost,
+		crudIncidenciaURL,
+		bytes.NewBuffer(c.Ctx.Input.RequestBody),
+	)
+	if errReq != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": err.Error()}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusInternalServerError,
+			"Message": "Error de conexión con el servicio CRUD",
+		}
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(http.StatusCreated)
-	c.Data["json"] = nuevaIncidencia
-	c.ServeJSON()
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusInternalServerError,
+			"Message": "No se pudo comunicar con el servidor CRUD",
+		}
+		_ = c.ServeJSON()
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	_ = json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
+}
+
+// Put actualiza una incidencia por ID en el servicio CRUD (puerto 8081).
+func (c *IncidenciaController) Put() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "ID de incidencia inválido"}
+		_ = c.ServeJSON()
+		return
+	}
+
+	client := &http.Client{}
+	req, errReq := http.NewRequest(
+		http.MethodPut,
+		crudIncidenciaURL+"/"+strconv.Itoa(id),
+		bytes.NewBuffer(c.Ctx.Input.RequestBody),
+	)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error creando la petición"}
+		_ = c.ServeJSON()
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el CRUD"}
+		_ = c.ServeJSON()
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	_ = json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
+}
+
+// Delete elimina una incidencia por ID a través del servicio CRUD (puerto 8081).
+func (c *IncidenciaController) Delete() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "ID de incidencia inválido"}
+		_ = c.ServeJSON()
+		return
+	}
+
+	client := &http.Client{}
+	req, errReq := http.NewRequest(http.MethodDelete, crudIncidenciaURL+"/"+strconv.Itoa(id), nil)
+	if errReq != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error en la petición"}
+		_ = c.ServeJSON()
+		return
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"Success": false, "Message": "Error de conexión con el CRUD"}
+		_ = c.ServeJSON()
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var resultado map[string]interface{}
+	_ = json.Unmarshal(body, &resultado)
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
 }

@@ -1,60 +1,54 @@
 package models
 
 import (
-	"errors"
 	"github.com/beego/beego/v2/client/orm"
 )
 
 type Mantenimiento struct {
-	ID              int    `orm:"column(id);pk;auto" json:"id"`
-	EquipoID        int    `orm:"column(equipo_id)" json:"equipo_id"`
+	IdMantenimiento int    `orm:"column(id_mantenimiento);pk;auto" json:"id_mantenimiento"`
 	Tipo            string `orm:"column(tipo)" json:"tipo"`
-	Detalles        string `orm:"column(detalles)" json:"detalles"`
-	FechaProgramada string `orm:"column(fecha_programada)" json:"fecha_programada"`
+	Descripcion     string `orm:"column(descripcion)" json:"descripcion"`
+	Fecha           string `orm:"column(fecha)" json:"fecha"`
+	IdBodega        int    `orm:"column(id_bodega)" json:"id_bodega"`
 }
 
+// TableName define el nombre exacto de la tabla en PostgreSQL
 func (t *Mantenimiento) TableName() string {
 	return "mantenimiento"
 }
 
+// init registra el modelo automáticamente en el ORM de Beego
 func init() {
 	orm.RegisterModel(new(Mantenimiento))
 }
 
+// GetAllMantenimientos obtiene todos los registros de la tabla mantenimiento
 func GetAllMantenimientos() ([]Mantenimiento, error) {
 	o := orm.NewOrm()
 	var mantenimientos []Mantenimiento
 	_, err := o.QueryTable(new(Mantenimiento)).All(&mantenimientos)
-	if err != nil {
-		return nil, err
-	}
-	return mantenimientos, nil
+	return mantenimientos, err
 }
 
+// Create inserta un nuevo registro de mantenimiento
 func (m *Mantenimiento) Create() error {
 	o := orm.NewOrm()
-	id, err := o.Insert(m)
-	if err != nil {
-		return err
-	}
-	m.ID = int(id)
-	return nil
+	_, err := o.Insert(m)
+	return err
 }
 
-func UpdateMantenimiento(m *Mantenimiento) error {
+// Update actualiza un mantenimiento existente por su ID
+func (m *Mantenimiento) Update(id int) error {
 	o := orm.NewOrm()
-	// Verificamos si el registro existe primero
-	mantenimientoExistente := Mantenimiento{ID: m.ID}
-	if err := o.Read(&mantenimientoExistente); err != nil {
-		return errors.New("mantenimiento no encontrado")
+	mantenimiento := Mantenimiento{IdMantenimiento: id}
+	if err := o.Read(&mantenimiento); err == nil {
+		mantenimiento.Tipo = m.Tipo
+		mantenimiento.Descripcion = m.Descripcion
+		mantenimiento.Fecha = m.Fecha
+		mantenimiento.IdBodega = m.IdBodega
+		_, err := o.Update(&mantenimiento)
+		return err
+	} else {
+		return err
 	}
-
-	// Actualizamos los campos
-	mantenimientoExistente.EquipoID = m.EquipoID
-	mantenimientoExistente.Tipo = m.Tipo
-	mantenimientoExistente.Detalles = m.Detalles
-	mantenimientoExistente.FechaProgramada = m.FechaProgramada
-
-	_, err := o.Update(&mantenimientoExistente, "EquipoID", "Tipo", "Detalles", "FechaProgramada")
-	return err
 }

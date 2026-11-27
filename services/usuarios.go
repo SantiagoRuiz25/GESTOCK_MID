@@ -4,110 +4,81 @@ import (
 	"errors"
 	"time"
 
-	"GESTOCK_MID/data"
 	"GESTOCK_MID/models"
+
+	"github.com/beego/beego/v2/client/orm"
 )
 
-func toModelUsuario(u data.Usuario) models.Usuario {
-	return models.Usuario{
-		ID:              u.ID,
-		Nombre:          u.Nombre,
-		Email:           u.Email,
-		PasswordHash:    u.PasswordHash,
-		Rol:             u.Rol,
-		RolID:           u.RolID,
-		Activo:          u.Activo,
-		HorasTrabajadas: u.HorasTrabajadas,
-		EmpresaID:       u.EmpresaID,
-		CreadoEn:        u.CreadoEn,
-		ActualizadoEn:   u.ActualizadoEn,
-	}
-}
-
+// GetAllUsuariosService obtiene todos los usuarios desde la base de datos.
 func GetAllUsuariosService() ([]models.Usuario, error) {
-	result := make([]models.Usuario, 0, len(data.Usuarios))
-	for _, u := range data.Usuarios {
-		result = append(result, toModelUsuario(u))
+	o := orm.NewOrm()
+	var usuarios []models.Usuario
+	_, err := o.QueryTable(new(models.Usuario)).All(&usuarios)
+	if err != nil {
+		return nil, err
 	}
-	return result, nil
+	return usuarios, nil
 }
 
-func GetUsuarioByIdService(id int) (models.Usuario, error) {
-	for _, u := range data.Usuarios {
-		if u.ID == id {
-			return toModelUsuario(u), nil
+// GetUsuarioByIdService busca un usuario por su ID.
+func GetUsuarioByIdService(id int) (*models.Usuario, error) {
+	o := orm.NewOrm()
+	usuario := &models.Usuario{ID: id}
+	if err := o.Read(usuario); err != nil {
+		if err == orm.ErrNoRows {
+			return nil, errors.New("usuario no encontrado")
 		}
+		return nil, err
 	}
-	return models.Usuario{}, errors.New("Usuario no encontrado")
+	return usuario, nil
 }
 
+// CreateUsuarioService crea un nuevo usuario en la base de datos.
 func CreateUsuarioService(usuario *models.Usuario) error {
 	if usuario == nil {
-		return errors.New("Datos de usuario inválidos")
-	}
-
-	nextID := 1
-	for _, u := range data.Usuarios {
-		if u.ID >= nextID {
-			nextID = u.ID + 1
-		}
+		return errors.New("datos de usuario inválidos")
 	}
 
 	now := time.Now()
-	usuario.ID = nextID
 	if usuario.CreadoEn.IsZero() {
 		usuario.CreadoEn = now
 	}
 	usuario.ActualizadoEn = now
-	if !usuario.Activo {
-		usuario.Activo = true
-	}
 
-	nuevo := data.Usuario{
-		ID:              usuario.ID,
-		Nombre:          usuario.Nombre,
-		Email:           usuario.Email,
-		PasswordHash:    usuario.PasswordHash,
-		Rol:             usuario.Rol,
-		RolID:           usuario.RolID,
-		Activo:          usuario.Activo,
-		HorasTrabajadas: usuario.HorasTrabajadas,
-		EmpresaID:       usuario.EmpresaID,
-		CreadoEn:        usuario.CreadoEn,
-		ActualizadoEn:   usuario.ActualizadoEn,
-	}
-
-	data.Usuarios = append(data.Usuarios, nuevo)
-	return nil
+	o := orm.NewOrm()
+	_, err := o.Insert(usuario)
+	return err
 }
 
+// UpdateUsuarioService actualiza los datos de un usuario existente.
 func UpdateUsuarioService(id int, usuario *models.Usuario) error {
 	if usuario == nil {
-		return errors.New("Datos de usuario inválidos")
+		return errors.New("datos de usuario inválidos")
 	}
 
-	for i, u := range data.Usuarios {
-		if u.ID == id {
-			now := time.Now()
-			usuario.ID = id
-			usuario.ActualizadoEn = now
-
-			data.Usuarios[i].Nombre = usuario.Nombre
-			data.Usuarios[i].Email = usuario.Email
-			if usuario.PasswordHash != "" {
-				data.Usuarios[i].PasswordHash = usuario.PasswordHash
-			}
-			data.Usuarios[i].Rol = usuario.Rol
-			data.Usuarios[i].RolID = usuario.RolID
-			data.Usuarios[i].Activo = usuario.Activo
-			data.Usuarios[i].HorasTrabajadas = usuario.HorasTrabajadas
-			data.Usuarios[i].EmpresaID = usuario.EmpresaID
-			data.Usuarios[i].ActualizadoEn = now
-
-			*usuario = toModelUsuario(data.Usuarios[i])
-			return nil
+	o := orm.NewOrm()
+	existente := &models.Usuario{ID: id}
+	if err := o.Read(existente); err != nil {
+		if err == orm.ErrNoRows {
+			return errors.New("usuario no encontrado")
 		}
+		return err
 	}
 
-	return errors.New("Usuario no encontrado")
+	usuario.ID = id
+	usuario.CreadoEn = existente.CreadoEn
+	usuario.ActualizadoEn = time.Now()
+	if usuario.PasswordHash == "" {
+		usuario.PasswordHash = existente.PasswordHash
+	}
+
+	_, err := o.Update(usuario)
+	return err
+}
+
+// DeleteUsuarioService elimina un usuario por su ID.
+func DeleteUsuarioService(id int) error {
+	o := orm.NewOrm()
+	_, err := o.Delete(&models.Usuario{ID: id})
+	return err
 }

@@ -3,12 +3,15 @@ package main
 import "GESTOCK_MID/models"
 
 import (
-	_ "GESTOCK_MID/routers"
-
 	beego "github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
 	"github.com/beego/beego/v2/server/web/filter/cors"
+	_ "github.com/lib/pq"
+	_ "GESTOCK_MID/routers"
+	_ "GESTOCK_MID/models"
 )
+
+
 
 func main() {
 	if err := models.ConectarPostgres(); err != nil {

@@ -1,22 +1,33 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"strconv"
 
+	"GESTOCK_MID/models"
 	"GESTOCK_MID/services"
 
-	"github.com/beego/beego/v2/server/web"
+	beego "github.com/beego/beego/v2/server/web"
 )
 
+const crudProductoURL = "http://localhost:8081/v1/productos"
+
 type ProductosController struct {
-	web.Controller
+	beego.Controller
 }
 
 func (c *ProductosController) GetAll() {
+	if _, _, err := services.SolicitarProductoParaCliente(
+		c.Ctx.Request.Context(), http.MethodGet, 0, nil,
+	); err != nil {
+		c.reenviarProductoDirecto(http.MethodGet, "", nil)
+		return
+	}
 	c.enviarAlCRUD(http.MethodGet, 0)
 }
 
@@ -25,6 +36,22 @@ func (c *ProductosController) GetById() {
 }
 
 func (c *ProductosController) Post() {
+	var producto models.Producto
+	bodyBytes := c.Ctx.Input.RequestBody
+	var err error
+	if len(bodyBytes) == 0 && c.Ctx.Request.Body != nil {
+		err = json.NewDecoder(c.Ctx.Request.Body).Decode(&producto)
+	} else {
+		err = json.Unmarshal(bodyBytes, &producto)
+	}
+	if err != nil {
+		c.responderError(http.StatusBadRequest, "El formato del JSON recibido es inválido: "+err.Error())
+		return
+	}
+	if producto.Nombre == "" || producto.Codigo == "" {
+		c.responderError(http.StatusBadRequest, "Los campos 'nombre' y 'codigo' son obligatorios")
+		return
+	}
 	c.enviarAlCRUD(http.MethodPost, 0)
 }
 
@@ -61,6 +88,34 @@ func (c *ProductosController) enviarAlCRUD(metodo string, id int64) {
 
 	c.Ctx.Output.SetStatus(estado)
 	c.Data["json"] = datos
+	_ = c.ServeJSON()
+}
+
+func (c *ProductosController) reenviarProductoDirecto(metodo string, sufijo string, cuerpo []byte) {
+	idStr := c.Ctx.Input.Param(":id")
+	if idStr != "" && sufijo == "" {
+		sufijo = "/" + idStr
+	}
+
+	req, err := http.NewRequest(metodo, crudProductoURL+sufijo, bytes.NewBuffer(cuerpo))
+	if err != nil {
+		c.responderError(http.StatusInternalServerError, "Error al preparar la petición al CRUD")
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.responderError(http.StatusBadGateway, "Error de conexión con el servicio CRUD backend (puerto 8081)")
+		return
+	}
+	defer resp.Body.Close()
+
+	var resultado interface{}
+	_ = json.NewDecoder(resp.Body).Decode(&resultado)
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
 	_ = c.ServeJSON()
 }
 

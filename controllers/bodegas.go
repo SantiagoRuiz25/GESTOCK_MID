@@ -1,22 +1,38 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"strconv"
 
+	"GESTOCK_MID/models"
 	"GESTOCK_MID/services"
 
 	"github.com/beego/beego/v2/server/web"
 )
 
+const crudBodegaURL = "http://localhost:8081/v1/bodega"
+
 type BodegasController struct {
 	web.Controller
 }
 
+// BodegaController mantiene compatibilidad si alguna ruta lo referencia directamente.
+type BodegaController struct {
+	BodegasController
+}
+
 func (c *BodegasController) GetAll() {
+	if _, _, err := services.SolicitarBodega(
+		c.Ctx.Request.Context(), http.MethodGet, 0, nil,
+	); err != nil {
+		c.reenviarPeticionDirecta(http.MethodGet, "", nil)
+		return
+	}
 	c.enviarBodegaAlCRUD(http.MethodGet, 0)
 }
 
@@ -25,6 +41,15 @@ func (c *BodegasController) GetById() {
 }
 
 func (c *BodegasController) Post() {
+	var bodega models.Bodegas
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &bodega); err != nil {
+		c.responderErrorBodega(http.StatusBadRequest, "El formato del JSON recibido es inválido: "+err.Error())
+		return
+	}
+	if bodega.Nombre == "" || bodega.Codigo == 0 {
+		c.responderErrorBodega(http.StatusBadRequest, "Los campos 'nombre' y 'codigo' son obligatorios")
+		return
+	}
 	c.enviarBodegaAlCRUD(http.MethodPost, 0)
 }
 
@@ -61,6 +86,30 @@ func (c *BodegasController) enviarBodegaAlCRUD(metodo string, id int64) {
 
 	c.Ctx.Output.SetStatus(estado)
 	c.Data["json"] = datos
+	_ = c.ServeJSON()
+}
+
+func (c *BodegasController) reenviarPeticionDirecta(metodo string, sufijo string, cuerpo []byte) {
+	url := crudBodegaURL + sufijo
+	req, err := http.NewRequest(metodo, url, bytes.NewBuffer(cuerpo))
+	if err != nil {
+		c.responderErrorBodega(http.StatusInternalServerError, "Error al preparar la petición al CRUD")
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.responderErrorBodega(http.StatusBadGateway, "Error de conexión con el servicio CRUD (8081)")
+		return
+	}
+	defer resp.Body.Close()
+
+	var resultado interface{}
+	_ = json.NewDecoder(resp.Body).Decode(&resultado)
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
 	_ = c.ServeJSON()
 }
 

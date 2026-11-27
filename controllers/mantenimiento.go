@@ -7,6 +7,7 @@ import (
 
 	"GESTOCK_MID/models"
 
+	"github.com/beego/beego/v2/client/orm"
 	beego "github.com/beego/beego/v2/server/web"
 )
 
@@ -14,94 +15,188 @@ type MantenimientoController struct {
 	beego.Controller
 }
 
-// GET: Listar mantenimientos
+// GetAll obtiene todos los mantenimientos.
 func (c *MantenimientoController) GetAll() {
-	mantenimientos, err := models.GetAllMantenimientos()
+	o := orm.NewOrm()
+	var mantenimientos []models.Mantenimiento
+	_, err := o.QueryTable(new(models.Mantenimiento)).All(&mantenimientos)
 	if err != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": "Error al obtener los mantenimientos"}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusInternalServerError,
+			"Message": "Error al consultar los mantenimientos",
+		}
+		_ = c.ServeJSON()
 		return
 	}
 
 	c.Ctx.Output.SetStatus(http.StatusOK)
-	c.Data["json"] = mantenimientos
-	c.ServeJSON()
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  http.StatusOK,
+		"Message": "Mantenimientos obtenidos con éxito",
+		"Data":    mantenimientos,
+	}
+	_ = c.ServeJSON()
 }
 
-// GET: Obtener mantenimiento por ID
+// GetById obtiene un mantenimiento por su ID.
 func (c *MantenimientoController) GetById() {
-	idParam := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idParam)
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]string{"error": "ID de mantenimiento inválido"}
-		c.ServeJSON()
-		return
-	}
-
-	mantenimientos, err := models.GetAllMantenimientos()
-	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": "Error al obtener los mantenimientos"}
-		c.ServeJSON()
-		return
-	}
-
-	for _, m := range mantenimientos {
-		if m.ID == id {
-			c.Ctx.Output.SetStatus(http.StatusOK)
-			c.Data["json"] = m
-			c.ServeJSON()
-			return
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusBadRequest,
+			"Message": "ID de mantenimiento inválido",
 		}
+		_ = c.ServeJSON()
+		return
 	}
 
-	c.Ctx.Output.SetStatus(http.StatusNotFound)
-	c.Data["json"] = map[string]string{"error": "Mantenimiento no encontrado"}
-	c.ServeJSON()
+	o := orm.NewOrm()
+	mantenimiento := &models.Mantenimiento{IdMantenimiento: id}
+	if err := o.Read(mantenimiento); err != nil {
+		c.Ctx.Output.SetStatus(http.StatusNotFound)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusNotFound,
+			"Message": "Mantenimiento no encontrado",
+		}
+		_ = c.ServeJSON()
+		return
+	}
+
+	c.Ctx.Output.SetStatus(http.StatusOK)
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  http.StatusOK,
+		"Message": "Mantenimiento obtenido con éxito",
+		"Data":    mantenimiento,
+	}
+	_ = c.ServeJSON()
 }
 
-// POST: Crear mantenimiento
+// Post crea un nuevo mantenimiento.
 func (c *MantenimientoController) Post() {
-	var nuevoMantenimiento models.Mantenimiento
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &nuevoMantenimiento); err != nil {
+	var mantenimiento models.Mantenimiento
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &mantenimiento); err != nil {
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]string{"error": "Datos inválidos"}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusBadRequest,
+			"Message": "El formato del JSON recibido es inválido",
+		}
+		_ = c.ServeJSON()
 		return
 	}
 
-	if err := nuevoMantenimiento.Create(); err != nil {
+	o := orm.NewOrm()
+	if _, err := o.Insert(&mantenimiento); err != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": "Error al guardar el mantenimiento"}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusInternalServerError,
+			"Message": "Error al registrar el mantenimiento",
+		}
+		_ = c.ServeJSON()
 		return
 	}
 
 	c.Ctx.Output.SetStatus(http.StatusCreated)
-	c.Data["json"] = nuevoMantenimiento
-	c.ServeJSON()
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  http.StatusCreated,
+		"Message": "Mantenimiento registrado con éxito",
+		"Data":    mantenimiento,
+	}
+	_ = c.ServeJSON()
 }
 
-// PUT: Actualizar mantenimiento
+// Put actualiza un mantenimiento existente por su ID.
 func (c *MantenimientoController) Put() {
-	var mantenimiento models.Mantenimiento
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &mantenimiento); err != nil {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]string{"error": "Datos inválidos"}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusBadRequest,
+			"Message": "ID de mantenimiento inválido",
+		}
+		_ = c.ServeJSON()
 		return
 	}
 
-	if err := models.UpdateMantenimiento(&mantenimiento); err != nil {
+	var mantenimiento models.Mantenimiento
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &mantenimiento); err != nil {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusBadRequest,
+			"Message": "El formato del JSON recibido es inválido",
+		}
+		_ = c.ServeJSON()
+		return
+	}
+
+	mantenimiento.IdMantenimiento = id
+	o := orm.NewOrm()
+	if _, err := o.Update(&mantenimiento); err != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]string{"error": "Error al actualizar el mantenimiento"}
-		c.ServeJSON()
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusInternalServerError,
+			"Message": "Error al actualizar el mantenimiento",
+		}
+		_ = c.ServeJSON()
 		return
 	}
 
 	c.Ctx.Output.SetStatus(http.StatusOK)
-	c.Data["json"] = mantenimiento
-	c.ServeJSON()
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  http.StatusOK,
+		"Message": "Mantenimiento actualizado con éxito",
+		"Data":    mantenimiento,
+	}
+	_ = c.ServeJSON()
+}
+
+// Delete elimina un mantenimiento por su ID.
+func (c *MantenimientoController) Delete() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusBadRequest,
+			"Message": "ID de mantenimiento inválido",
+		}
+		_ = c.ServeJSON()
+		return
+	}
+
+	o := orm.NewOrm()
+	if _, err := o.Delete(&models.Mantenimiento{IdMantenimiento: id}); err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusInternalServerError,
+			"Message": "Error al eliminar el mantenimiento",
+		}
+		_ = c.ServeJSON()
+		return
+	}
+
+	c.Ctx.Output.SetStatus(http.StatusOK)
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  http.StatusOK,
+		"Message": "Mantenimiento eliminado con éxito",
+	}
+	_ = c.ServeJSON()
 }
