@@ -2,301 +2,104 @@ package controllers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
 	"GESTOCK_MID/models"
+	"GESTOCK_MID/services"
 
 	beego "github.com/beego/beego/v2/server/web"
 )
+
+const crudProductoURL = "http://localhost:8081/v1/productos"
 
 type ProductosController struct {
 	beego.Controller
 }
 
-const crudProductoURL = "http://localhost:8081/v1/productos"
-
-// ==========================================
-// 1. GET ALL: Consultar todos los productos
-// ==========================================
 func (c *ProductosController) GetAll() {
-	resp, err := http.Get(crudProductoURL)
-	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD backend (puerto 8081)",
-		}
-		c.ServeJSON()
+	if _, _, err := services.SolicitarProductoParaCliente(
+		c.Ctx.Request.Context(), http.MethodGet, 0, nil,
+	); err != nil {
+		c.reenviarProductoDirecto(http.MethodGet, "", nil)
 		return
 	}
-	defer resp.Body.Close()
-
-	var productos []models.Producto
-	if err := json.NewDecoder(resp.Body).Decode(&productos); err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al procesar la respuesta del CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Lista de productos obtenida con éxito",
-		"Data":    productos,
-	}
-	c.ServeJSON()
+	c.enviarAlCRUD(http.MethodGet, 0)
 }
 
-// ==========================================
-// 2. GET BY ID: Consultar producto por ID
-// ==========================================
 func (c *ProductosController) GetById() {
-	idParam := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idParam)
-	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es inválido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	resp, err := http.Get(crudProductoURL + "/" + idParam)
-	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error de conexión con el servicio CRUD backend (puerto 8081)",
-		}
-		c.ServeJSON()
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  404,
-			"Message": "recurso no encontrado en el sistema",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	var producto models.Producto
-	if err := json.NewDecoder(resp.Body).Decode(&producto); err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al procesar la respuesta del CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Producto obtenido con éxito",
-		"Data":    producto,
-	}
-	c.ServeJSON()
+	c.enviarProductoPorID(http.MethodGet)
 }
 
-// ==========================================
-// 3. POST: Crear nuevo producto
-// ==========================================
 func (c *ProductosController) Post() {
 	var producto models.Producto
-
 	bodyBytes := c.Ctx.Input.RequestBody
+	var err error
 	if len(bodyBytes) == 0 && c.Ctx.Request.Body != nil {
-		decoder := json.NewDecoder(c.Ctx.Request.Body)
-		if err := decoder.Decode(&producto); err != nil {
-			c.Ctx.Output.SetStatus(400)
-			c.Data["json"] = map[string]interface{}{
-				"Success": false,
-				"Status":  400,
-				"Message": "El formato del JSON recibido es inválido o está vacío",
-				"Error":   err.Error(),
-			}
-			c.ServeJSON()
-			return
-		}
+		err = json.NewDecoder(c.Ctx.Request.Body).Decode(&producto)
 	} else {
-		if err := json.Unmarshal(bodyBytes, &producto); err != nil {
-			c.Ctx.Output.SetStatus(400)
-			c.Data["json"] = map[string]interface{}{
-				"Success": false,
-				"Status":  400,
-				"Message": "El formato del JSON recibido es inválido",
-				"Error":   err.Error(),
-			}
-			c.ServeJSON()
-			return
-		}
+		err = json.Unmarshal(bodyBytes, &producto)
 	}
-
+	if err != nil {
+		c.responderError(http.StatusBadRequest, "El formato del JSON recibido es inválido: "+err.Error())
+		return
+	}
 	if producto.Nombre == "" || producto.Codigo == "" {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Los campos 'nombre' y 'codigo' son obligatorios",
-		}
-		c.ServeJSON()
+		c.responderError(http.StatusBadRequest, "Los campos 'nombre' y 'codigo' son obligatorios")
 		return
 	}
-
-	jsonBody, err := json.Marshal(producto)
-	if err != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Error al serializar el producto",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	req, err := http.NewRequest(http.MethodPost, crudProductoURL, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al preparar la petición POST hacia el CRUD",
-		}
-		c.ServeJSON()
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "error de conexión con el servicio CRUD backend (puerto 8081)",
-		}
-		c.ServeJSON()
-		return
-	}
-	defer resp.Body.Close()
-
-	var resultado interface{}
-	json.NewDecoder(resp.Body).Decode(&resultado)
-
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		c.Ctx.Output.SetStatus(resp.StatusCode)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  resp.StatusCode,
-			"Message": "No se pudo crear el producto en el CRUD",
-			"Error":   resultado,
-		}
-		c.ServeJSON()
-		return
-	}
-
-	c.Ctx.Output.SetStatus(201)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  201,
-		"Message": "Producto creado exitosamente",
-		"Data":    resultado,
-	}
-	c.ServeJSON()
+	c.enviarAlCRUD(http.MethodPost, 0)
 }
 
-// ==========================================
-// 4. PUT: Actualizar producto por ID
-// ==========================================
 func (c *ProductosController) Put() {
-	idParam := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idParam)
+	c.enviarProductoPorID(http.MethodPut)
+}
+
+func (c *ProductosController) Delete() {
+	c.enviarProductoPorID(http.MethodDelete)
+}
+
+func (c *ProductosController) enviarProductoPorID(metodo string) {
+	id, err := strconv.ParseInt(c.Ctx.Input.Param(":id"), 10, 32)
 	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es inválido",
+		c.responderError(http.StatusBadRequest, "El ID debe ser un entero positivo")
+		return
+	}
+	c.enviarAlCRUD(metodo, id)
+}
+
+func (c *ProductosController) enviarAlCRUD(metodo string, id int64) {
+	estado, datos, err := services.SolicitarProductoParaCliente(
+		c.Ctx.Request.Context(), metodo, id, c.Ctx.Input.RequestBody,
+	)
+	if err != nil {
+		log.Printf("Error al consultar el CRUD de productos: %v", err)
+		if errors.Is(err, context.DeadlineExceeded) {
+			c.responderError(http.StatusGatewayTimeout, "El servicio CRUD tardó demasiado en responder")
+			return
 		}
-		c.ServeJSON()
+		c.responderError(http.StatusBadGateway, "No se pudo comunicar con el servicio CRUD")
 		return
 	}
 
-	var producto models.Producto
-	bodyBytes := c.Ctx.Input.RequestBody
-	if len(bodyBytes) == 0 && c.Ctx.Request.Body != nil {
-		decoder := json.NewDecoder(c.Ctx.Request.Body)
-		if err := decoder.Decode(&producto); err != nil {
-			c.Ctx.Output.SetStatus(400)
-			c.Data["json"] = map[string]interface{}{
-				"Success": false,
-				"Status":  400,
-				"Message": "El formato del JSON recibido es inválido o está vacío",
-				"Error":   err.Error(),
-			}
-			c.ServeJSON()
-			return
-		}
-	} else {
-		if err := json.Unmarshal(bodyBytes, &producto); err != nil {
-			c.Ctx.Output.SetStatus(400)
-			c.Data["json"] = map[string]interface{}{
-				"Success": false,
-				"Status":  400,
-				"Message": "El formato del JSON recibido es inválido",
-				"Error":   err.Error(),
-			}
-			c.ServeJSON()
-			return
-		}
+	c.Ctx.Output.SetStatus(estado)
+	c.Data["json"] = datos
+	_ = c.ServeJSON()
+}
+
+func (c *ProductosController) reenviarProductoDirecto(metodo string, sufijo string, cuerpo []byte) {
+	idStr := c.Ctx.Input.Param(":id")
+	if idStr != "" && sufijo == "" {
+		sufijo = "/" + idStr
 	}
 
-	producto.ID = id
-
-	jsonBody, err := json.Marshal(producto)
+	req, err := http.NewRequest(metodo, crudProductoURL+sufijo, bytes.NewBuffer(cuerpo))
 	if err != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Error al serializar el producto para actualizar",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	req, err := http.NewRequest(http.MethodPut, crudProductoURL+"/"+idParam, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al preparar la petición PUT hacia el CRUD",
-		}
-		c.ServeJSON()
+		c.responderError(http.StatusInternalServerError, "Error al preparar la petición al CRUD")
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -304,105 +107,24 @@ func (c *ProductosController) Put() {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "error de conexión con el servicio CRUD backend (puerto 8081)",
-		}
-		c.ServeJSON()
+		c.responderError(http.StatusBadGateway, "Error de conexión con el servicio CRUD backend (puerto 8081)")
 		return
 	}
 	defer resp.Body.Close()
 
 	var resultado interface{}
-	json.NewDecoder(resp.Body).Decode(&resultado)
-
-	if resp.StatusCode != http.StatusOK {
-		c.Ctx.Output.SetStatus(resp.StatusCode)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  resp.StatusCode,
-			"Message": "No se pudo actualizar el producto",
-			"Error":   resultado,
-		}
-		c.ServeJSON()
-		return
-	}
-
-	c.Ctx.Output.SetStatus(200)
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Producto actualizado correctamente",
-		"Data":    resultado,
-	}
-	c.ServeJSON()
+	_ = json.NewDecoder(resp.Body).Decode(&resultado)
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = resultado
+	_ = c.ServeJSON()
 }
 
-// ==========================================
-// 5. DELETE: Eliminar producto por ID
-// ==========================================
-func (c *ProductosController) Delete() {
-	idParam := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idParam)
-	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es inválido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, crudProductoURL+"/"+idParam, nil)
-	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al preparar la petición DELETE",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "error de conexión con el servicio CRUD backend (puerto 8081)",
-		}
-		c.ServeJSON()
-		return
-	}
-	defer resp.Body.Close()
-
-	var resultado interface{}
-	json.NewDecoder(resp.Body).Decode(&resultado)
-
-	if resp.StatusCode != http.StatusOK {
-		c.Ctx.Output.SetStatus(resp.StatusCode)
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  resp.StatusCode,
-			"Message": "No se pudo eliminar el producto",
-			"Error":   resultado,
-		}
-		c.ServeJSON()
-		return
-	}
-
-	c.Ctx.Output.SetStatus(200)
+func (c *ProductosController) responderError(estado int, mensaje string) {
+	c.Ctx.Output.SetStatus(estado)
 	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Producto eliminado correctamente",
+		"Success": false,
+		"Status":  estado,
+		"Message": mensaje,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }

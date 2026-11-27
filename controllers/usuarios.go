@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	
 	"math/big"
 	"net/http"
 	"strconv"
@@ -23,9 +22,7 @@ type UsuariosController struct {
 const crudUsuarioURL = "http://localhost:8081/v1/usuarios"
 const crudSesionURL = "http://localhost:8081/v1/sesiones"
 
-// =================
-// 1. GET ALL: Obtener todos los usuarios
-// ==========================================
+// GetAll obtiene todos los usuarios desde el servicio CRUD.
 func (c *UsuariosController) GetAll() {
 	resp, err := http.Get(crudUsuarioURL)
 	if err != nil {
@@ -40,62 +37,107 @@ func (c *UsuariosController) GetAll() {
 		return
 	}
 
-	c.Ctx.Output.SetStatus(200)
+	c.Ctx.Output.SetStatus(http.StatusOK)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  200,
+		"Status":  http.StatusOK,
 		"Message": "Usuarios obtenidos con éxito",
 		"Data":    usuarios,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// ==========================================
-// 2. POST: Crear un usuario
-// ==========================================
+// GetById obtiene un usuario por su ID desde el servicio CRUD.
+func (c *UsuariosController) GetById() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusBadRequest,
+			"Message": "El ID ingresado es inválido",
+		}
+		_ = c.ServeJSON()
+		return
+	}
+
+	resp, err := http.Get(crudUsuarioURL + "/" + strconv.Itoa(id))
+	if err != nil {
+		conError500(c, "Error de conexión con el servicio CRUD (8081)")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		c.Ctx.Output.SetStatus(http.StatusNotFound)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  http.StatusNotFound,
+			"Message": "Usuario no encontrado",
+		}
+		_ = c.ServeJSON()
+		return
+	}
+
+	var usuario models.Usuario
+	if err := json.NewDecoder(resp.Body).Decode(&usuario); err != nil {
+		conError500(c, "Error al procesar la respuesta del CRUD")
+		return
+	}
+
+	c.Ctx.Output.SetStatus(http.StatusOK)
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  http.StatusOK,
+		"Message": "Usuario obtenido con éxito",
+		"Data":    usuario,
+	}
+	_ = c.ServeJSON()
+}
+
+// Post crea un usuario enviando la petición al servicio CRUD.
 func (c *UsuariosController) Post() {
 	var usuario models.Usuario
 
-	// Lectura robusta del cuerpo de la petición
 	bodyBytes := c.Ctx.Input.RequestBody
 	if len(bodyBytes) == 0 {
 		if c.Ctx.Request.Body != nil {
 			decoder := json.NewDecoder(c.Ctx.Request.Body)
 			if err := decoder.Decode(&usuario); err != nil {
-				c.Ctx.Output.SetStatus(400)
+				c.Ctx.Output.SetStatus(http.StatusBadRequest)
 				c.Data["json"] = map[string]interface{}{
 					"Success": false,
-					"Status":  400,
+					"Status":  http.StatusBadRequest,
 					"Message": "El formato del JSON recibido es inválido o está vacío",
 					"Error":   err.Error(),
 				}
-				c.ServeJSON()
+				_ = c.ServeJSON()
 				return
 			}
 		}
 	} else {
 		if err := json.Unmarshal(bodyBytes, &usuario); err != nil {
-			c.Ctx.Output.SetStatus(400)
+			c.Ctx.Output.SetStatus(http.StatusBadRequest)
 			c.Data["json"] = map[string]interface{}{
 				"Success": false,
-				"Status":  400,
+				"Status":  http.StatusBadRequest,
 				"Message": "El formato del JSON recibido es inválido",
 				"Error":   err.Error(),
 			}
-			c.ServeJSON()
+			_ = c.ServeJSON()
 			return
 		}
 	}
 
-	// Validación básica de negocio
 	if usuario.Nombre == "" || usuario.Email == "" {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
+			"Status":  http.StatusBadRequest,
 			"Message": "Los campos 'nombre' y 'email' son obligatorios",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
@@ -121,7 +163,7 @@ func (c *UsuariosController) Post() {
 	defer resp.Body.Close()
 
 	var resultado interface{}
-	json.NewDecoder(resp.Body).Decode(&resultado)
+	_ = json.NewDecoder(resp.Body).Decode(&resultado)
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		c.Ctx.Output.SetStatus(resp.StatusCode)
@@ -131,47 +173,45 @@ func (c *UsuariosController) Post() {
 			"Message": "No se pudo crear el usuario en el CRUD",
 			"Error":   resultado,
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(201)
+	c.Ctx.Output.SetStatus(http.StatusCreated)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  201,
+		"Status":  http.StatusCreated,
 		"Message": "Usuario creado exitosamente",
 		"Data":    resultado,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// ==========================================
-// 3. PUT: Actualizar un usuario
-// ==========================================
+// Put actualiza un usuario existente por su ID.
 func (c *UsuariosController) Put() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
+			"Status":  http.StatusBadRequest,
 			"Message": "El ID ingresado es inválido",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
 	var usuario models.Usuario
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &usuario); err != nil {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
+			"Status":  http.StatusBadRequest,
 			"Message": "El formato del JSON recibido es inválido",
 			"Error":   err.Error(),
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
@@ -192,7 +232,7 @@ func (c *UsuariosController) Put() {
 	defer resp.Body.Close()
 
 	var resultado interface{}
-	json.NewDecoder(resp.Body).Decode(&resultado)
+	_ = json.NewDecoder(resp.Body).Decode(&resultado)
 
 	if resp.StatusCode != http.StatusOK {
 		c.Ctx.Output.SetStatus(resp.StatusCode)
@@ -202,34 +242,32 @@ func (c *UsuariosController) Put() {
 			"Message": "No se pudo actualizar el usuario",
 			"Error":   resultado,
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(200)
+	c.Ctx.Output.SetStatus(http.StatusOK)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  200,
+		"Status":  http.StatusOK,
 		"Message": "Usuario actualizado correctamente",
 		"Data":    resultado,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// ==========================================
-// 4. DELETE: Eliminar un usuario
-// ==========================================
+// Delete elimina un usuario por su ID.
 func (c *UsuariosController) Delete() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
+			"Status":  http.StatusBadRequest,
 			"Message": "El ID ingresado es inválido",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
@@ -248,7 +286,7 @@ func (c *UsuariosController) Delete() {
 	defer resp.Body.Close()
 
 	var resultado interface{}
-	json.NewDecoder(resp.Body).Decode(&resultado)
+	_ = json.NewDecoder(resp.Body).Decode(&resultado)
 
 	if resp.StatusCode != http.StatusOK {
 		c.Ctx.Output.SetStatus(resp.StatusCode)
@@ -258,22 +296,20 @@ func (c *UsuariosController) Delete() {
 			"Message": "No se pudo eliminar el usuario",
 			"Error":   resultado,
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(200)
+	c.Ctx.Output.SetStatus(http.StatusOK)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  200,
+		"Status":  http.StatusOK,
 		"Message": "Usuario eliminado correctamente",
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// ==========================================
-// 5. LOGIN: Iniciar Sesión
-// ==========================================
+// Login procesa el inicio de sesión del usuario.
 func (c *UsuariosController) Login() {
 	var credenciales map[string]interface{}
 	bodyBytes := c.Ctx.Input.RequestBody
@@ -281,22 +317,20 @@ func (c *UsuariosController) Login() {
 		_ = json.Unmarshal(bodyBytes, &credenciales)
 	}
 
-	c.Ctx.Output.SetStatus(200)
+	c.Ctx.Output.SetStatus(http.StatusOK)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  200,
+		"Status":  http.StatusOK,
 		"Message": "Inicio de sesión exitoso",
 		"Data": map[string]interface{}{
 			"token": "jwt_token_ejemplo_seguro",
 			"rol":   "Administrador",
 		},
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// ==========================================
-// 6. GET ACTIVE SESSIONS: Consultar sesiones activas
-// ==========================================
+// GetActiveSessions consulta las sesiones activas en el CRUD.
 func (c *UsuariosController) GetActiveSessions() {
 	resp, err := http.Get(crudSesionURL)
 	if err != nil {
@@ -315,21 +349,20 @@ func (c *UsuariosController) GetActiveSessions() {
 		"Message": "Sesiones activas obtenidas",
 		"Data":    resultado,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// ==========================================
-// 7. LOGOUT: Cerrar Sesión
-// ==========================================
+// Logout cierra la sesión de un usuario en el CRUD.
 func (c *UsuariosController) Logout() {
 	idStr := c.Ctx.Input.Param(":id")
 	if idStr == "" {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
+			"Status":  http.StatusBadRequest,
 			"Message": "El parámetro ID de usuario es obligatorio para cerrar sesión",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
@@ -357,12 +390,10 @@ func (c *UsuariosController) Logout() {
 		"Message": "Sesión cerrada correctamente",
 		"Data":    resultado,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// ==========================================
-// 8. ENVIAR CÓDIGO DE VERIFICACIÓN POR CORREO
-// ==========================================
+// EnviarCodigoVerificacion genera un código de 6 dígitos para el correo recibido.
 func (c *UsuariosController) EnviarCodigoVerificacion() {
 	var datos map[string]string
 	bodyBytes := c.Ctx.Input.RequestBody
@@ -372,44 +403,38 @@ func (c *UsuariosController) EnviarCodigoVerificacion() {
 
 	email := datos["email"]
 	if email == "" {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
+			"Status":  http.StatusBadRequest,
 			"Message": "El campo 'email' es obligatorio",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
-	// Generar un código aleatorio de 6 dígitos de forma segura
 	nBig, _ := rand.Int(rand.Reader, big.NewInt(900000))
 	codigo := fmt.Sprintf("%06d", nBig.Int64()+100000)
 
-	// Nota: Aquí puedes integrar tu lógica SMTP si deseas enviar el correo real.
-	// Por ahora, se retorna el código en el JSON de respuesta para validación local.
-	c.Ctx.Output.SetStatus(200)
+	c.Ctx.Output.SetStatus(http.StatusOK)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  200,
+		"Status":  http.StatusOK,
 		"Message": "Código de verificación generado con éxito",
 		"Data": map[string]string{
 			"email":  email,
 			"codigo": codigo,
 		},
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// ==========================================
-// Función auxiliar para errores 500
-// ==========================================
 func conError500(c *UsuariosController, msg string) {
-	c.Ctx.Output.SetStatus(500)
+	c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 	c.Data["json"] = map[string]interface{}{
 		"Success": false,
-		"Status":  500,
+		"Status":  http.StatusInternalServerError,
 		"Message": msg,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }

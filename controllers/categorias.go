@@ -5,114 +5,113 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"GESTOCK_MID/models"
 	web "github.com/beego/beego/v2/server/web"
 )
 
+const crudCategoriaURL = "http://localhost:8081/v1/categorias"
+
 type CategoriasController struct {
 	web.Controller
 }
 
-const crudCategoriaURL = "http://localhost:8081/v1/categorias"
-
-// 1. GET ALL: Consultar todas las categorías
+// GetAll consulta todas las categorías desde el servicio CRUD.
 func (c *CategoriasController) GetAll() {
 	respuesta, errCrud := http.Get(crudCategoriaURL)
 	if errCrud != nil {
-		c.Ctx.Output.SetStatus(500)
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  500,
+			"Status":  http.StatusInternalServerError,
 			"Message": "Error de conexión con la base de datos o servicio CRUD",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 	defer respuesta.Body.Close()
 
 	var lista []models.Categoria
-	json.NewDecoder(respuesta.Body).Decode(&lista)
+	_ = json.NewDecoder(respuesta.Body).Decode(&lista)
 
-	c.Ctx.Output.SetStatus(200)
+	c.Ctx.Output.SetStatus(http.StatusOK)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  200,
+		"Status":  http.StatusOK,
 		"Message": "Lista de categorías obtenida con éxito",
 		"Data":    lista,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// 2. GET BY ID: Consultar categoría por ID
+// GetById consulta una categoría por ID desde el servicio CRUD.
 func (c *CategoriasController) GetById() {
 	idCategoria := c.Ctx.Input.Param(":id")
-
-	if idCategoria == "" {
-		c.Ctx.Output.SetStatus(400)
+	if strings.TrimSpace(idCategoria) == "" {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
-			"Message": "El ID es requerido",
+			"Status":  http.StatusBadRequest,
+			"Message": "El ID es obligatorio",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
 	id, err := strconv.Atoi(idCategoria)
 	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es invalido",
+			"Status":  http.StatusBadRequest,
+			"Message": "ID ingresado es inválido",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
 	respuesta, errCrud := http.Get(crudCategoriaURL + "/" + strconv.Itoa(id))
 	if errCrud != nil {
-		c.Ctx.Output.SetStatus(500)
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  500,
+			"Status":  http.StatusInternalServerError,
 			"Message": "Error de conexión con la base de datos o servicio CRUD",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 	defer respuesta.Body.Close()
 
-	if respuesta.StatusCode == 404 {
-		c.Ctx.Output.SetStatus(404)
+	if respuesta.StatusCode == http.StatusNotFound {
+		c.Ctx.Output.SetStatus(http.StatusNotFound)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  404,
+			"Status":  http.StatusNotFound,
 			"Message": "No se encontró la categoría solicitada en el sistema",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
 	var categoria models.Categoria
-	json.NewDecoder(respuesta.Body).Decode(&categoria)
+	_ = json.NewDecoder(respuesta.Body).Decode(&categoria)
 
-	c.Ctx.Output.SetStatus(200)
+	c.Ctx.Output.SetStatus(http.StatusOK)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  200,
+		"Status":  http.StatusOK,
 		"Message": "Categoría obtenida con éxito",
 		"Data":    categoria,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// 3. POST: Crear nueva categoría
+// Post crea una nueva categoría enviándola al servicio CRUD.
 func (c *CategoriasController) Post() {
 	var nuevaCategoria models.Categoria
 
-	// Lectura robusta dual del cuerpo de la petición
 	bodyBytes := c.Ctx.Input.RequestBody
 	var err error
 	if len(bodyBytes) == 0 && c.Ctx.Request.Body != nil {
@@ -122,45 +121,45 @@ func (c *CategoriasController) Post() {
 	}
 
 	if err != nil {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
-			"Message": "El formato del JSON recibido es invalido",
+			"Status":  http.StatusBadRequest,
+			"Message": "El formato del JSON recibido es inválido",
 			"Error":   err.Error(),
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
+	nuevaCategoria.Nombre = strings.TrimSpace(nuevaCategoria.Nombre)
 	if nuevaCategoria.Nombre == "" {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
+			"Status":  http.StatusBadRequest,
 			"Message": "Campos obligatorios incompletos",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
-	// Serializar y enviar al CRUD (puerto 8081)
 	jsonBody, _ := json.Marshal(nuevaCategoria)
 	resp, err := http.Post(crudCategoriaURL, "application/json", bytes.NewBuffer(jsonBody))
 	if err != nil {
-		c.Ctx.Output.SetStatus(500)
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  500,
+			"Status":  http.StatusInternalServerError,
 			"Message": "Error de conexión con el servicio CRUD backend (puerto 8081)",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 	defer resp.Body.Close()
 
 	var resultado interface{}
-	json.NewDecoder(resp.Body).Decode(&resultado)
+	_ = json.NewDecoder(resp.Body).Decode(&resultado)
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		c.Ctx.Output.SetStatus(resp.StatusCode)
@@ -170,66 +169,67 @@ func (c *CategoriasController) Post() {
 			"Message": "No se pudo crear la categoría en el CRUD",
 			"Error":   resultado,
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(201)
+	c.Ctx.Output.SetStatus(http.StatusCreated)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  201,
+		"Status":  http.StatusCreated,
 		"Message": "Categoría creada exitosamente",
 		"Data":    resultado,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// 4. PUT: Actualizar categoría
+// Put actualiza una categoría existente por ID.
 func (c *CategoriasController) Put() {
 	idParam := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es inválido",
+			"Status":  http.StatusBadRequest,
+			"Message": "ID ingresado es inválido",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
 	var categoria models.Categoria
 	bodyBytes := c.Ctx.Input.RequestBody
 	if len(bodyBytes) == 0 && c.Ctx.Request.Body != nil {
-		json.NewDecoder(c.Ctx.Request.Body).Decode(&categoria)
+		_ = json.NewDecoder(c.Ctx.Request.Body).Decode(&categoria)
 	} else {
-		json.Unmarshal(bodyBytes, &categoria)
+		_ = json.Unmarshal(bodyBytes, &categoria)
 	}
 
 	categoria.ID = id
+	categoria.Nombre = strings.TrimSpace(categoria.Nombre)
 
 	jsonBody, err := json.Marshal(categoria)
 	if err != nil {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
+			"Status":  http.StatusBadRequest,
 			"Message": "Error al serializar la categoría para actualizar",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
 	req, err := http.NewRequest(http.MethodPut, crudCategoriaURL+"/"+idParam, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		c.Ctx.Output.SetStatus(500)
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  500,
+			"Status":  http.StatusInternalServerError,
 			"Message": "Error al preparar la petición PUT hacia el CRUD",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -237,19 +237,19 @@ func (c *CategoriasController) Put() {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		c.Ctx.Output.SetStatus(500)
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  500,
-			"Message": "error de conexión con el servicio CRUD backend (puerto 8081)",
+			"Status":  http.StatusInternalServerError,
+			"Message": "Error de conexión con el servicio CRUD backend (puerto 8081)",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 	defer resp.Body.Close()
 
 	var resultado interface{}
-	json.NewDecoder(resp.Body).Decode(&resultado)
+	_ = json.NewDecoder(resp.Body).Decode(&resultado)
 
 	if resp.StatusCode != http.StatusOK {
 		c.Ctx.Output.SetStatus(resp.StatusCode)
@@ -259,63 +259,63 @@ func (c *CategoriasController) Put() {
 			"Message": "No se pudo actualizar la categoría",
 			"Error":   resultado,
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(200)
+	c.Ctx.Output.SetStatus(http.StatusOK)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  200,
+		"Status":  http.StatusOK,
 		"Message": "Categoría actualizada correctamente",
 		"Data":    resultado,
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
 
-// 5. DELETE: Eliminar categoría
+// Delete elimina una categoría por ID.
 func (c *CategoriasController) Delete() {
 	idParam := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil || id <= 0 {
-		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  400,
-			"Message": "Id ingresado es inválido",
+			"Status":  http.StatusBadRequest,
+			"Message": "ID ingresado es inválido",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, crudCategoriaURL+"/"+idParam, nil)
 	if err != nil {
-		c.Ctx.Output.SetStatus(500)
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  500,
+			"Status":  http.StatusInternalServerError,
 			"Message": "Error al preparar la petición DELETE",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		c.Ctx.Output.SetStatus(500)
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  500,
-			"Message": "error de conexión con el servicio CRUD backend (puerto 8081)",
+			"Status":  http.StatusInternalServerError,
+			"Message": "Error de conexión con el servicio CRUD backend (puerto 8081)",
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 	defer resp.Body.Close()
 
 	var resultado interface{}
-	json.NewDecoder(resp.Body).Decode(&resultado)
+	_ = json.NewDecoder(resp.Body).Decode(&resultado)
 
 	if resp.StatusCode != http.StatusOK {
 		c.Ctx.Output.SetStatus(resp.StatusCode)
@@ -325,15 +325,15 @@ func (c *CategoriasController) Delete() {
 			"Message": "No se pudo eliminar la categoría",
 			"Error":   resultado,
 		}
-		c.ServeJSON()
+		_ = c.ServeJSON()
 		return
 	}
 
-	c.Ctx.Output.SetStatus(200)
+	c.Ctx.Output.SetStatus(http.StatusOK)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
-		"Status":  200,
+		"Status":  http.StatusOK,
 		"Message": "Categoría eliminada correctamente",
 	}
-	c.ServeJSON()
+	_ = c.ServeJSON()
 }
