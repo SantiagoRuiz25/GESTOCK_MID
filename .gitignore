@@ -428,8 +428,7 @@ FodyWeavers.xsd
 #*.lscache
 
 
-# Go & entorno del proyecto GESTOCK_MID
+# Ejecutables de Go y herramientas locales
 *.exe
 GESTOCK_MID.exe
-.env
 .qodo/
