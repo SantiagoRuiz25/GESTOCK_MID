@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"time"
 
 	"GESTOCK_MID/models"
 
@@ -39,12 +38,6 @@ func CreateUsuarioService(usuario *models.Usuario) error {
 		return errors.New("datos de usuario inválidos")
 	}
 
-	now := time.Now()
-	if usuario.CreadoEn.IsZero() {
-		usuario.CreadoEn = now
-	}
-	usuario.ActualizadoEn = now
-
 	o := orm.NewOrm()
 	_, err := o.Insert(usuario)
 	return err
@@ -66,11 +59,6 @@ func UpdateUsuarioService(id int, usuario *models.Usuario) error {
 	}
 
 	usuario.ID = id
-	usuario.CreadoEn = existente.CreadoEn
-	usuario.ActualizadoEn = time.Now()
-	if usuario.PasswordHash == "" {
-		usuario.PasswordHash = existente.PasswordHash
-	}
 
 	_, err := o.Update(usuario)
 	return err
