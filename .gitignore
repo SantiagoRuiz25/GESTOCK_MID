@@ -426,3 +426,10 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+
+# Go & entorno del proyecto GESTOCK_MID
+*.exe
+GESTOCK_MID.exe
+.env
+.qodo/
